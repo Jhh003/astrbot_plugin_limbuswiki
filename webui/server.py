@@ -5,8 +5,22 @@ Provides REST API and simple HTML interface for knowledge base management
 import os
 import asyncio
 import secrets
+import socket
 from typing import Optional, Callable, Awaitable
 from datetime import datetime
+
+
+def _check_port_available(host: str, port: int) -> bool:
+    """Check if a port is available for binding"""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            # For 0.0.0.0, we check localhost since that's what matters for conflicts
+            check_host = '127.0.0.1' if host == '0.0.0.0' else host
+            sock.bind((check_host, port))
+            return True
+    except OSError:
+        return False
 
 
 class WebUIServer:
@@ -59,7 +73,11 @@ class WebUIServer:
         return f"http://{self.host}:{self.port}"
     
     async def start(self):
-        """Start the WebUI server"""
+        """Start the WebUI server
+        
+        Raises:
+            RuntimeError: If the port is not available or server fails to start
+        """
         if not self.enabled:
             return
         
@@ -71,7 +89,16 @@ class WebUIServer:
             import uvicorn
         except ImportError:
             # FastAPI not available, skip WebUI
-            return
+            raise RuntimeError(
+                "WebUI 依赖未安装。请运行: pip install fastapi uvicorn python-multipart"
+            )
+        
+        # Check if port is available before starting
+        if not _check_port_available(self.host, self.port):
+            raise RuntimeError(
+                f"端口 {self.port} 已被占用。请在配置中更改 webui_port，"
+                f"或检查是否有其他服务正在使用该端口。"
+            )
         
         app = FastAPI(title="Limbus Guide WebUI", version="1.0.0")
         security = HTTPBearer(auto_error=False)
@@ -843,6 +870,29 @@ class WebUIServer:
         )
         self.server = uvicorn.Server(config)
         self._server_task = asyncio.create_task(self.server.serve())
+        
+        # Wait a moment and check if server started successfully
+        # The port check above should catch most issues, but we also
+        # wait a bit to see if any startup errors occur
+        await asyncio.sleep(0.5)
+        
+        # Check if the server task has already failed
+        if self._server_task.done():
+            try:
+                self._server_task.result()
+            except Exception as e:
+                raise RuntimeError(f"WebUI 服务器启动失败: {e}")
+        
+        # Check if server actually started (uvicorn sets started=True after binding)
+        if not getattr(self.server, 'started', True):
+            self._server_task.cancel()
+            try:
+                await self._server_task
+            except asyncio.CancelledError:
+                pass
+            raise RuntimeError(
+                f"WebUI 服务器启动失败。请检查端口 {self.port} 是否可用。"
+            )
     
     async def stop(self):
         """Stop the WebUI server"""

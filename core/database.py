@@ -89,12 +89,39 @@ class Database:
             )
         ''')
         
+        # Custom templates table (for document templates)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS custom_templates (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE,
+                content TEXT NOT NULL,
+                description TEXT DEFAULT '',
+                is_default INTEGER DEFAULT 0,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+        ''')
+        
+        # Status mappings table (for custom status subcategories)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS status_mappings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                status_name TEXT NOT NULL,
+                subcategory TEXT NOT NULL,
+                display_name TEXT NOT NULL,
+                description TEXT DEFAULT '',
+                created_at TEXT NOT NULL,
+                UNIQUE(status_name, subcategory)
+            )
+        ''')
+        
         # Create indexes
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_chunks_doc_id ON chunks(doc_id)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_chunks_scope ON chunks(scope)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_chunks_group_id ON chunks(group_id)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_documents_scope ON documents(scope)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_documents_group_id ON documents(group_id)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_status_mappings_status ON status_mappings(status_name)')
         
         conn.commit()
     
@@ -476,3 +503,140 @@ class Database:
             self._conn.close()
             self._conn = None
         self._executor.shutdown(wait=True, cancel_futures=False)
+    
+    # ============ Custom Template Operations ============
+    
+    async def get_templates(self) -> List[Dict]:
+        """Get all custom templates"""
+        return await self._run_in_executor(self._get_templates)
+    
+    def _get_templates(self) -> List[Dict]:
+        conn = self._get_conn()
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM custom_templates ORDER BY is_default DESC, name ASC')
+        return [dict(row) for row in cursor.fetchall()]
+    
+    async def get_template_by_name(self, name: str) -> Optional[Dict]:
+        """Get a template by name"""
+        return await self._run_in_executor(self._get_template_by_name, name)
+    
+    def _get_template_by_name(self, name: str) -> Optional[Dict]:
+        conn = self._get_conn()
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM custom_templates WHERE name = ?', (name,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+    
+    async def save_template(self, name: str, content: str, 
+                           description: str = '', is_default: bool = False) -> int:
+        """Save or update a custom template"""
+        return await self._run_in_executor(
+            self._save_template, name, content, description, is_default
+        )
+    
+    def _save_template(self, name: str, content: str, 
+                      description: str, is_default: bool) -> int:
+        conn = self._get_conn()
+        cursor = conn.cursor()
+        now = datetime.now().isoformat()
+        
+        # Check if template exists
+        cursor.execute('SELECT id FROM custom_templates WHERE name = ?', (name,))
+        existing = cursor.fetchone()
+        
+        if existing:
+            cursor.execute('''
+                UPDATE custom_templates 
+                SET content = ?, description = ?, is_default = ?, updated_at = ?
+                WHERE name = ?
+            ''', (content, description, 1 if is_default else 0, now, name))
+            return existing['id']
+        else:
+            cursor.execute('''
+                INSERT INTO custom_templates (name, content, description, is_default, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (name, content, description, 1 if is_default else 0, now, now))
+            conn.commit()
+            return cursor.lastrowid
+    
+    async def delete_template(self, name: str) -> bool:
+        """Delete a custom template"""
+        return await self._run_in_executor(self._delete_template, name)
+    
+    def _delete_template(self, name: str) -> bool:
+        conn = self._get_conn()
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM custom_templates WHERE name = ?', (name,))
+        conn.commit()
+        return cursor.rowcount > 0
+    
+    # ============ Status Mapping Operations ============
+    
+    async def get_status_mappings(self, status_name: Optional[str] = None) -> List[Dict]:
+        """Get status mappings, optionally filtered by status name"""
+        return await self._run_in_executor(self._get_status_mappings, status_name)
+    
+    def _get_status_mappings(self, status_name: Optional[str]) -> List[Dict]:
+        conn = self._get_conn()
+        cursor = conn.cursor()
+        
+        if status_name:
+            cursor.execute(
+                'SELECT * FROM status_mappings WHERE status_name = ? ORDER BY subcategory',
+                (status_name,)
+            )
+        else:
+            cursor.execute('SELECT * FROM status_mappings ORDER BY status_name, subcategory')
+        
+        return [dict(row) for row in cursor.fetchall()]
+    
+    async def add_status_mapping(self, status_name: str, subcategory: str,
+                                 display_name: str, description: str = '') -> int:
+        """Add or update a status mapping"""
+        return await self._run_in_executor(
+            self._add_status_mapping, status_name, subcategory, display_name, description
+        )
+    
+    def _add_status_mapping(self, status_name: str, subcategory: str,
+                           display_name: str, description: str) -> int:
+        conn = self._get_conn()
+        cursor = conn.cursor()
+        now = datetime.now().isoformat()
+        
+        cursor.execute('''
+            INSERT OR REPLACE INTO status_mappings 
+            (status_name, subcategory, display_name, description, created_at)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (status_name, subcategory, display_name, description, now))
+        conn.commit()
+        return cursor.lastrowid
+    
+    async def delete_status_mapping(self, mapping_id: int) -> bool:
+        """Delete a status mapping by ID"""
+        return await self._run_in_executor(self._delete_status_mapping, mapping_id)
+    
+    def _delete_status_mapping(self, mapping_id: int) -> bool:
+        conn = self._get_conn()
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM status_mappings WHERE id = ?', (mapping_id,))
+        conn.commit()
+        return cursor.rowcount > 0
+    
+    async def get_status_mapping_dict(self) -> Dict[str, List[Dict]]:
+        """Get all status mappings grouped by status name"""
+        return await self._run_in_executor(self._get_status_mapping_dict)
+    
+    def _get_status_mapping_dict(self) -> Dict[str, List[Dict]]:
+        conn = self._get_conn()
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM status_mappings ORDER BY status_name, subcategory')
+        
+        result = {}
+        for row in cursor.fetchall():
+            mapping = dict(row)
+            status_name = mapping['status_name']
+            if status_name not in result:
+                result[status_name] = []
+            result[status_name].append(mapping)
+        
+        return result

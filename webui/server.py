@@ -524,7 +524,7 @@ class WebUIServer:
                         <div class="result">
                             <div class="result-header">
                                 #${{i+1}} | Chunk ${{r.id}} | 
-                                ${{r.scope}} ${{r.group_id ? '(' + r.group_id + ')' : ''}}
+                                ${{r.scope}} ${{r.group_id ? ['(', r.group_id, ')'].join('') : ''}}
                                 <span class="score">得分: ${{r.score.toFixed(3)}}</span>
                             </div>
                             <div class="breakdown">

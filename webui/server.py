@@ -7,6 +7,7 @@ import os
 import asyncio
 import secrets
 import socket
+import json
 from typing import Optional, Callable, Awaitable, List, Dict, Any
 from datetime import datetime
 
@@ -1926,7 +1927,7 @@ class WebUIServer:
     
     <script>
         const token = '{self.token}';
-        const defaultTemplate = `{DOCUMENT_TEMPLATE.replace('`', '\\`').replace('$', '\\$')}`;
+        const defaultTemplate = {json.dumps(DOCUMENT_TEMPLATE)};
         let editingTemplate = null;
         
         function copyDefaultTemplate() {{
@@ -1953,7 +1954,12 @@ class WebUIServer:
         
         async function editTemplate(name) {{
             try {{
-                const resp = await fetch('/templates/' + encodeURIComponent(name) + '?token=' + token);
+                const resp = await fetch('/templates/' + encodeURIComponent(name) + '?token=' + encodeURIComponent(token));
+                if (!resp.ok) {{
+                    const data = await resp.json();
+                    alert('&#10060; 加载模板失败：' + (data.detail || '未知错误'));
+                    return;
+                }}
                 const data = await resp.json();
                 if (data.template) {{
                     document.getElementById('templateEditor').classList.add('active');
@@ -1962,6 +1968,8 @@ class WebUIServer:
                     document.getElementById('templateDesc').value = data.template.description || '';
                     document.getElementById('templateContent').value = data.template.content;
                     editingTemplate = name;
+                }} else {{
+                    alert('&#10060; 模板数据为空');
                 }}
             }} catch (err) {{
                 alert('&#10060; 加载模板失败：' + err.message);
@@ -1975,7 +1983,7 @@ class WebUIServer:
             const content = document.getElementById('templateContent').value;
             
             try {{
-                const resp = await fetch('/templates?token=' + token, {{
+                const resp = await fetch('/templates?token=' + encodeURIComponent(token), {{
                     method: 'POST',
                     headers: {{'Content-Type': 'application/json'}},
                     body: JSON.stringify({{name, content, description}})
@@ -1995,7 +2003,7 @@ class WebUIServer:
         async function deleteTemplate(name) {{
             if (!confirm('确定要删除模板 "' + name + '" 吗？')) return;
             try {{
-                const resp = await fetch('/templates/' + encodeURIComponent(name) + '?token=' + token, {{
+                const resp = await fetch('/templates/' + encodeURIComponent(name) + '?token=' + encodeURIComponent(token), {{
                     method: 'DELETE'
                 }});
                 if (resp.ok) {{

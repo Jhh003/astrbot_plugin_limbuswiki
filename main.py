@@ -35,6 +35,14 @@ from .core.prompts import (
 class LimbusGuidePlugin(Star):
     """Limbus Company game guide query plugin with RAG support"""
     
+    # Default status structure for embedding and reranking
+    _DEFAULT_FEATURE_STATUS = {
+        'enabled': False,
+        'implemented': False,
+        'provider_id': None,
+        'message': ''
+    }
+    
     def __init__(self, context: Context, config: AstrBotConfig):
         super().__init__(context)
         self.context = context
@@ -70,6 +78,10 @@ class LimbusGuidePlugin(Star):
         # Import session management: {unified_msg_origin: session_data}
         self.import_sessions: Dict[str, dict] = {}
         
+    def _get_default_status(self) -> dict:
+        """Return a copy of the default feature status dictionary"""
+        return dict(self._DEFAULT_FEATURE_STATUS)
+    
     async def initialize(self):
         """Initialize plugin components"""
         logger.info("Initializing Limbus Guide Plugin...")
@@ -102,18 +114,11 @@ class LimbusGuidePlugin(Star):
     async def _configure_search_providers(self):
         """Configure embedding and reranking providers from AstrBot"""
         # Track implementation status for logging and WebUI display
-        self.embedding_status = {
-            'enabled': self.use_embedding,
-            'implemented': False,
-            'provider_id': None,
-            'message': ''
-        }
-        self.reranking_status = {
-            'enabled': self.use_reranking,
-            'implemented': False,
-            'provider_id': None,
-            'message': ''
-        }
+        self.embedding_status = self._get_default_status()
+        self.embedding_status['enabled'] = self.use_embedding
+        
+        self.reranking_status = self._get_default_status()
+        self.reranking_status['enabled'] = self.use_reranking
         
         # Log implementation status header
         logger.info("=" * 50)
@@ -201,12 +206,8 @@ class LimbusGuidePlugin(Star):
                 'overlap': self.overlap,
                 'group_boost': self.group_boost,
                 # Embedding and reranking status for WebUI display
-                'embedding_status': getattr(self, 'embedding_status', {
-                    'enabled': False, 'implemented': False, 'provider_id': None, 'message': ''
-                }),
-                'reranking_status': getattr(self, 'reranking_status', {
-                    'enabled': False, 'implemented': False, 'provider_id': None, 'message': ''
-                }),
+                'embedding_status': getattr(self, 'embedding_status', self._get_default_status()),
+                'reranking_status': getattr(self, 'reranking_status', self._get_default_status()),
             }
             
             self.webui = WebUIServer(

@@ -135,8 +135,18 @@ class LimbusGuidePlugin(Star):
         except ImportError as e:
             logger.warning(f"WebUI dependencies not available: {e}")
             logger.warning("WebUI is disabled. Install fastapi and uvicorn to enable.")
+            logger.info("插件核心功能（问答、导入等）仍可正常使用。")
+            self.webui = None
+        except RuntimeError as e:
+            # RuntimeError is raised by WebUIServer for startup failures
+            logger.error(f"WebUI启动失败: {e}")
+            logger.error("请检查端口配置或依赖安装情况。")
+            logger.info("插件核心功能（问答、导入等）仍可正常使用。")
+            self.webui = None
         except Exception as e:
-            logger.error(f"Failed to start WebUI: {e}")
+            logger.error(f"WebUI启动时发生意外错误: {e}")
+            logger.info("插件核心功能（问答、导入等）仍可正常使用。")
+            self.webui = None
     
     # ============ Command Handlers ============
     
@@ -398,20 +408,15 @@ class LimbusGuidePlugin(Star):
         """Handle Q&A queries"""
         group_id = event.get_group_id() or "private"
         
-        # Check if knowledge base is empty
+        # Check if knowledge base is empty - let other handlers process if no knowledge base
         stats = await self.db.get_stats(group_id)
         if stats['total']['chunk_count'] == 0:
-            yield event.plain_result(
-                "📚 知识库为空\n\n"
-                "请先使用 `/guide import` 导入攻略文档\n"
-                "可用 `/guide template` 获取文档模板"
-            )
+            # Knowledge base is empty, skip processing to allow other AI features
             return
         
         # Clean query
         query = query.strip()
         if not query:
-            yield event.plain_result("请输入您的问题")
             return
         
         # Get group settings
@@ -425,13 +430,7 @@ class LimbusGuidePlugin(Star):
         results = self.searcher.search(query, top_k=self.top_k, group_id=group_id)
         
         if not results:
-            yield event.plain_result(
-                "🔍 未找到相关内容\n\n"
-                "请尝试：\n"
-                "1. 换一种问法\n"
-                "2. 确认知识库中包含相关内容\n"
-                "3. 使用 `/guide status` 查看知识库状态"
-            )
+            # No relevant content found, skip processing to allow other AI features
             return
         
         # Build prompts

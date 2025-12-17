@@ -7,8 +7,111 @@ import os
 import asyncio
 import secrets
 import socket
-from typing import Optional, Callable, Awaitable
+from typing import Optional, Callable, Awaitable, List, Dict, Any
 from datetime import datetime
+
+
+def _render_global_doc_rows(docs: List[Dict[str, Any]]) -> str:
+    """Render HTML table rows for global documents."""
+    if not docs:
+        return '<tr><td colspan="5" class="empty-row">暂无文档</td></tr>'
+    rows = []
+    for doc in docs:
+        doc_id = doc['id']
+        row = (
+            '<tr>'
+            '<td>' + str(doc_id) + '</td>'
+            '<td>' + str(doc['name']) + '</td>'
+            '<td>' + '{:,}'.format(doc['raw_text_len']) + '</td>'
+            '<td>' + str(doc['created_at'][:19]) + '</td>'
+            '<td><button class="btn btn-danger" onclick="deleteDoc(' + str(doc_id) + ')">&#128465;&#65039; 删除</button></td>'
+            '</tr>'
+        )
+        rows.append(row)
+    return ''.join(rows)
+
+
+def _render_group_doc_rows(docs: List[Dict[str, Any]]) -> str:
+    """Render HTML table rows for group documents."""
+    if not docs:
+        return '<tr><td colspan="6" class="empty-row">暂无文档</td></tr>'
+    rows = []
+    for doc in docs:
+        doc_id = doc['id']
+        row = (
+            '<tr>'
+            '<td>' + str(doc_id) + '</td>'
+            '<td>' + str(doc['name']) + '</td>'
+            '<td>' + str(doc['group_id']) + '</td>'
+            '<td>' + '{:,}'.format(doc['raw_text_len']) + '</td>'
+            '<td>' + str(doc['created_at'][:19]) + '</td>'
+            '<td><button class="btn btn-danger" onclick="deleteDoc(' + str(doc_id) + ')">&#128465;&#65039; 删除</button></td>'
+            '</tr>'
+        )
+        rows.append(row)
+    return ''.join(rows)
+
+
+def _render_group_tags(group_ids: List[str]) -> str:
+    """Render HTML for group ID tags."""
+    if not group_ids:
+        return '<p class="empty-text">暂无群组数据</p>'
+    tags = ''.join('<span class="group-tag">' + str(gid) + '</span>' for gid in group_ids)
+    return '<div class="group-list">' + tags + '</div>'
+
+
+def _render_chunk_tags(tags: List[str]) -> str:
+    """Render HTML for chunk tags."""
+    if not tags:
+        return '<span style="color:#666;font-size:12px;">无标签</span>'
+    return ''.join('<span class="tag">' + str(tag) + '</span>' for tag in tags)
+
+
+def _render_chunks(chunks: List[Dict[str, Any]]) -> str:
+    """Render HTML for chunk display."""
+    if not chunks:
+        return '<p class="empty-text">暂无分块数据</p>'
+    result = []
+    for chunk in chunks:
+        scope_text = '&#127760; 全局' if chunk['scope'] == 'global' else '&#128101; 群组'
+        group_id = chunk.get('group_id') or ''
+        content = chunk['content']
+        content_display = content[:500] + ('...' if len(content) > 500 else '')
+        tags_html = _render_chunk_tags(chunk.get('tags', []))
+        html = (
+            '<div class="chunk">'
+            '<div class="chunk-header">'
+            '&#128290; 分块 #' + str(chunk['id']) + ' | &#128196; 文档 #' + str(chunk['doc_id']) + ' | ' +
+            scope_text + ' ' + str(group_id) +
+            '</div>'
+            '<div class="chunk-tags">' + tags_html + '</div>'
+            '<div class="chunk-content">' + content_display + '</div>'
+            '</div>'
+        )
+        result.append(html)
+    return ''.join(result)
+
+
+def _render_alias_rows(aliases: List[Dict[str, Any]], type_display: Dict[str, str]) -> str:
+    """Render HTML table rows for aliases."""
+    if not aliases:
+        return '<tr><td colspan="5" class="empty-row">暂无别名数据</td></tr>'
+    rows = []
+    for a in aliases:
+        alias_val = a['alias']
+        type_val = a['type']
+        type_text = type_display.get(type_val, type_val)
+        row = (
+            '<tr>'
+            '<td><strong>' + str(alias_val) + '</strong></td>'
+            '<td>' + str(a['canonical']) + '</td>'
+            '<td><span class="type-badge type-' + str(type_val) + '">' + type_text + '</span></td>'
+            '<td>' + str(a['created_at'][:19]) + '</td>'
+            "<td><button class=\"btn btn-danger\" onclick=\"deleteAlias('" + str(alias_val) + "')\">&#128465;&#65039; 删除</button></td>"
+            '</tr>'
+        )
+        rows.append(row)
+    return ''.join(rows)
 
 
 def _check_port_available(host: str, port: int) -> bool:
@@ -337,7 +440,7 @@ class WebUIServer:
         
         <div class="card">
             <h2>&#128101; 群组列表</h2>
-            {'<p class="empty-text">暂无群组数据</p>' if not group_ids else '<div class="group-list">' + ''.join(f'<span class="group-tag">{gid}</span>' for gid in group_ids) + '</div>'}
+            {_render_group_tags(group_ids)}
         </div>
     </div>
 </body>
@@ -520,13 +623,7 @@ class WebUIServer:
             <h2>&#127760; 全局知识库 ({len(global_docs)} 篇文档)</h2>
             <table>
                 <tr><th>ID</th><th>文档名称</th><th>字符数</th><th>创建时间</th><th>操作</th></tr>
-                {''.join(f"""<tr>
-                    <td>{doc['id']}</td>
-                    <td>{doc['name']}</td>
-                    <td>{doc['raw_text_len']:,}</td>
-                    <td>{doc['created_at'][:19]}</td>
-                    <td><button class="btn btn-danger" onclick="deleteDoc({doc['id']})">&#128465;&#65039; 删除</button></td>
-                </tr>""" for doc in global_docs) or '<tr><td colspan="5" class="empty-row">暂无文档</td></tr>'}
+                {_render_global_doc_rows(global_docs)}
             </table>
             <div style="margin-top: 20px;">
                 <button class="btn btn-danger" onclick="clearGlobal()">&#9888;&#65039; 清空全局库</button>
@@ -537,14 +634,7 @@ class WebUIServer:
             <h2>&#128101; 群覆盖库 ({len(group_docs)} 篇文档)</h2>
             <table>
                 <tr><th>ID</th><th>文档名称</th><th>群号</th><th>字符数</th><th>创建时间</th><th>操作</th></tr>
-                {''.join(f"""<tr>
-                    <td>{doc['id']}</td>
-                    <td>{doc['name']}</td>
-                    <td>{doc['group_id']}</td>
-                    <td>{doc['raw_text_len']:,}</td>
-                    <td>{doc['created_at'][:19]}</td>
-                    <td><button class="btn btn-danger" onclick="deleteDoc({doc['id']})">&#128465;&#65039; 删除</button></td>
-                </tr>""" for doc in group_docs) or '<tr><td colspan="6" class="empty-row">暂无文档</td></tr>'}
+                {_render_group_doc_rows(group_docs)}
             </table>
         </div>
     </div>
@@ -794,18 +884,7 @@ class WebUIServer:
         
         <div class="card">
             <h2>&#128203; 分块列表（显示前100条，共 {len(chunks)} 条）</h2>
-            {''.join(f"""
-            <div class="chunk">
-                <div class="chunk-header">
-                    &#128290; 分块 #{chunk['id']} | &#128196; 文档 #{chunk['doc_id']} | 
-                    {'&#127760; 全局' if chunk['scope'] == 'global' else '&#128101; 群组'} {chunk.get('group_id') or ''}
-                </div>
-                <div class="chunk-tags">
-                    {''.join(f'<span class="tag">{tag}</span>' for tag in chunk.get('tags', [])) or '<span style="color:#666;font-size:12px;">无标签</span>'}
-                </div>
-                <div class="chunk-content">{chunk['content'][:500]}{'...' if len(chunk['content']) > 500 else ''}</div>
-            </div>
-            """ for chunk in chunks) or '<p class="empty-text">暂无分块数据</p>'}
+            {_render_chunks(chunks)}
         </div>
     </div>
 </body>
@@ -1280,13 +1359,7 @@ class WebUIServer:
             <h2>&#128203; 别名列表（共 {len(aliases)} 条）</h2>
             <table>
                 <tr><th>别名</th><th>标准名</th><th>类型</th><th>创建时间</th><th>操作</th></tr>
-                {''.join(f"""<tr>
-                    <td><strong>{a['alias']}</strong></td>
-                    <td>{a['canonical']}</td>
-                    <td><span class="type-badge type-{a['type']}">{type_display.get(a['type'], a['type'])}</span></td>
-                    <td>{a['created_at'][:19]}</td>
-                    <td><button class="btn btn-danger" onclick="deleteAlias('{a['alias']}')">&#128465;&#65039; 删除</button></td>
-                </tr>""" for a in aliases) or '<tr><td colspan="5" class="empty-row">暂无别名数据</td></tr>'}
+                {_render_alias_rows(aliases, type_display)}
             </table>
         </div>
     </div>

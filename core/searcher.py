@@ -21,6 +21,11 @@ class Searcher:
     # Group scope boost factor
     GROUP_BOOST = 1.2
     
+    # Pattern to remove non-Chinese characters for Chinese text extraction
+    NON_CHINESE_PATTERN = re.compile(r'[a-zA-Z0-9\s\[\]【】《》（）().,，。！!？?；;：:""\'\']+')
+    # Pattern to extract English words and numbers
+    ENGLISH_PATTERN = re.compile(r'[a-zA-Z0-9]+')
+    
     def __init__(self, chunks: List[Dict] = None, alias_map: Dict[str, str] = None):
         """
         Initialize searcher
@@ -58,13 +63,12 @@ class Searcher:
         tokens = []
         text = text.lower()
         
-        # Extract English words and numbers
-        english_pattern = r'[a-zA-Z0-9]+'
-        english_tokens = re.findall(english_pattern, text)
+        # Extract English words and numbers using class pattern
+        english_tokens = self.ENGLISH_PATTERN.findall(text)
         tokens.extend(english_tokens)
         
-        # Extract Chinese characters and create unigrams + bigrams
-        chinese_text = re.sub(r'[a-zA-Z0-9\s\[\]【】《》（）().,，。！!？?；;：:""\'\']+', ' ', text)
+        # Extract Chinese characters using class pattern
+        chinese_text = self.NON_CHINESE_PATTERN.sub(' ', text)
         chinese_chars = [c for c in chinese_text if c.strip()]
         
         # Add unigrams

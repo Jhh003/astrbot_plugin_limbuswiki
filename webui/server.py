@@ -702,7 +702,7 @@ class WebUIServer:
             except UnicodeDecodeError:
                 try:
                     text = content.decode('gbk')
-                except:
+                except UnicodeDecodeError:
                     raise HTTPException(status_code=400, detail="无法解码文件，请使用UTF-8编码")
             
             if not text.strip():
@@ -853,3 +853,7 @@ class WebUIServer:
                     await asyncio.wait_for(self._server_task, timeout=5.0)
                 except asyncio.TimeoutError:
                     self._server_task.cancel()
+                    try:
+                        await self._server_task
+                    except asyncio.CancelledError:
+                        pass  # Expected when task is cancelled

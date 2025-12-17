@@ -60,6 +60,15 @@ class Tagger:
         '刷取/效率': ['刷', '效率', 'farm', 'grinding'],
     }
     
+    # Patterns for EGO and identity extraction
+    EGO_MENTION_PATTERN = re.compile(r'ego|E\.G\.O', re.IGNORECASE)
+    EGO_NAME_PATTERN = re.compile(r'[Ee][Gg][Oo][：:]\s*([^\s,，。]+)')
+    IDENTITY_NAME_PATTERN = re.compile(r'人格[：:]\s*([^\s,，。]+)')
+    META_NEWBIE_PATTERN = re.compile(r'新手|入门|基础|教程')
+    META_VERSION_PATTERN = re.compile(r'版本|更新|patch|改动', re.IGNORECASE)
+    META_RESOURCE_PATTERN = re.compile(r'资源|养成|材料|升级')
+    META_FAQ_PATTERN = re.compile(r'FAQ|问答|Q\s*[：:]|A\s*[：:]', re.IGNORECASE)
+    
     # Character names (Limbus Company sinners)
     SINNER_NAMES = [
         'yi sang', '以撒', '异想',
@@ -166,32 +175,32 @@ class Tagger:
                 entities['sinners'].append(normalized)
                 tags.add(f'角色:{normalized}')
         
-        # Check for EGO mentions
-        if re.search(r'ego|E\.G\.O', content, re.IGNORECASE):
+        # Check for EGO mentions using class patterns
+        if self.EGO_MENTION_PATTERN.search(content):
             tags.add('EGO')
-            # Try to extract EGO names (pattern: "EGO:xxx" or "EGO：xxx")
-            ego_matches = re.findall(r'[Ee][Gg][Oo][：:]\s*([^\s,，。]+)', content)
+            # Try to extract EGO names
+            ego_matches = self.EGO_NAME_PATTERN.findall(content)
             for ego in ego_matches:
                 if ego not in entities['egos']:
                     entities['egos'].append(ego)
         
-        # Check for specific identity patterns (e.g., "人格：xxx")
-        identity_matches = re.findall(r'人格[：:]\s*([^\s,，。]+)', content)
+        # Check for specific identity patterns using class pattern
+        identity_matches = self.IDENTITY_NAME_PATTERN.findall(content)
         for identity in identity_matches:
             if identity not in entities['identities']:
                 entities['identities'].append(identity)
         
-        # Add meta tags based on content patterns
-        if re.search(r'新手|入门|基础|教程', content):
+        # Add meta tags based on content patterns using class patterns
+        if self.META_NEWBIE_PATTERN.search(content):
             tags.add('新手入门')
         
-        if re.search(r'版本|更新|patch|改动', content, re.IGNORECASE):
+        if self.META_VERSION_PATTERN.search(content):
             tags.add('版本/更新')
         
-        if re.search(r'资源|养成|材料|升级', content):
+        if self.META_RESOURCE_PATTERN.search(content):
             tags.add('资源/养成')
         
-        if re.search(r'FAQ|问答|Q\s*[：:]|A\s*[：:]', content, re.IGNORECASE):
+        if self.META_FAQ_PATTERN.search(content):
             tags.add('FAQ')
         
         return list(tags), entities

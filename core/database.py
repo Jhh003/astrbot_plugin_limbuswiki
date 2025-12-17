@@ -16,7 +16,7 @@ class Database:
     
     def __init__(self, db_path: str):
         self.db_path = db_path
-        self._executor = ThreadPoolExecutor(max_workers=1)
+        self._executor = ThreadPoolExecutor(max_workers=2)  # Allow concurrent reads
         self._conn: Optional[sqlite3.Connection] = None
     
     async def init(self):
@@ -475,4 +475,4 @@ class Database:
         if self._conn:
             self._conn.close()
             self._conn = None
-        self._executor.shutdown(wait=False)
+        self._executor.shutdown(wait=True, cancel_futures=False)

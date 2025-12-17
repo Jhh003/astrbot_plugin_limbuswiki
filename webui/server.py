@@ -1058,11 +1058,9 @@ class WebUIServer:
                     document.getElementById('resultsList').innerHTML = results.map((r, i) => `
                         <div class="result">
                             <div class="result-header">
-                                <span class="result-info">
-                                    #${{i+1}} | 分块 ${{r.id}} | 
-                                    ${{r.scope === 'global' ? '&#127760; 全局' : '&#128101; 群组'}} ${{r.group_id ? '(' + r.group_id + ')' : ''}}
-                                </span>
-                                <span class="score">&#11088; 得分: ${{r.score.toFixed(3)}}</span>
+                                #${{i+1}} | Chunk ${{r.id}} | 
+                                ${{r.scope}} ${{r.group_id ? ['(', r.group_id, ')'].join('') : ''}}
+                                <span class="score">得分: ${{r.score.toFixed(3)}}</span>
                             </div>
                             <div class="breakdown">
                                 &#128202; BM25: ${{r.score_breakdown?.bm25?.toFixed(3) || 0}} |

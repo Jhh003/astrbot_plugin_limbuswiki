@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 WebUI Server for Limbus Guide Plugin
 Provides REST API and simple HTML interface for knowledge base management
@@ -271,22 +272,22 @@ class WebUIServer:
         </div>
         
         <nav>
-            <a href="/?token={self.token}" class="active">📊 状态总览</a>
-            <a href="/docs-page?token={self.token}">📄 文档管理</a>
-            <a href="/chunks-page?token={self.token}">📦 分块浏览</a>
-            <a href="/search-page?token={self.token}">🔍 检索调试</a>
-            <a href="/aliases-page?token={self.token}">📝 别名词典</a>
+            <a href="/?token={self.token}" class="active">&#128202; 状态总览</a>
+            <a href="/docs-page?token={self.token}">&#128196; 文档管理</a>
+            <a href="/chunks-page?token={self.token}">&#128230; 分块浏览</a>
+            <a href="/search-page?token={self.token}">&#128269; 检索调试</a>
+            <a href="/aliases-page?token={self.token}">&#128221; 别名词典</a>
         </nav>
         
         <div class="warning">
-            ⚠️ <strong>安全提示</strong>：请勿泄露URL中的Token，建议使用Nginx反向代理并启用HTTPS加密。
+            &#9888;&#65039; <strong>安全提示</strong>：请勿泄露URL中的Token，建议使用Nginx反向代理并启用HTTPS加密。
         </div>
         
         <div class="card">
-            <h2>🖥️ 运行状态</h2>
+            <h2>&#128421;&#65039; 运行状态</h2>
             <div class="stat-grid">
                 <div class="stat">
-                    <div class="stat-value">✅</div>
+                    <div class="stat-value">&#9989;</div>
                     <div class="stat-label">服务状态：运行中</div>
                 </div>
                 <div class="stat">
@@ -297,7 +298,7 @@ class WebUIServer:
         </div>
         
         <div class="card">
-            <h2>📈 知识库统计</h2>
+            <h2>&#128200; 知识库统计</h2>
             <div class="stat-grid">
                 <div class="stat">
                     <div class="stat-value">{stats['global']['doc_count']}</div>
@@ -315,7 +316,7 @@ class WebUIServer:
         </div>
         
         <div class="card">
-            <h2>⚙️ 配置信息</h2>
+            <h2>&#9881;&#65039; 配置信息</h2>
             <div class="config-item">
                 <span class="config-label">检索返回数量 (TopK)</span>
                 <span class="config-value">{self.config.get('top_k', 6)}</span>
@@ -335,7 +336,7 @@ class WebUIServer:
         </div>
         
         <div class="card">
-            <h2>👥 群组列表</h2>
+            <h2>&#128101; 群组列表</h2>
             {'<p class="empty-text">暂无群组数据</p>' if not group_ids else '<div class="group-list">' + ''.join(f'<span class="group-tag">{gid}</span>' for gid in group_ids) + '</div>'}
         </div>
     </div>
@@ -482,19 +483,19 @@ class WebUIServer:
 <body>
     <div class="container">
         <div class="header">
-            <h1>📄 文档管理</h1>
+            <h1>&#128196; 文档管理</h1>
         </div>
         
         <nav>
-            <a href="/?token={self.token}">📊 状态总览</a>
-            <a href="/docs-page?token={self.token}" class="active">📄 文档管理</a>
-            <a href="/chunks-page?token={self.token}">📦 分块浏览</a>
-            <a href="/search-page?token={self.token}">🔍 检索调试</a>
-            <a href="/aliases-page?token={self.token}">📝 别名词典</a>
+            <a href="/?token={self.token}">&#128202; 状态总览</a>
+            <a href="/docs-page?token={self.token}" class="active">&#128196; 文档管理</a>
+            <a href="/chunks-page?token={self.token}">&#128230; 分块浏览</a>
+            <a href="/search-page?token={self.token}">&#128269; 检索调试</a>
+            <a href="/aliases-page?token={self.token}">&#128221; 别名词典</a>
         </nav>
         
         <div class="card">
-            <h2>📤 上传文档</h2>
+            <h2>&#128228; 上传文档</h2>
             <form id="uploadForm" enctype="multipart/form-data">
                 <div class="form-group">
                     <label>选择文件（支持 .txt, .md）</label>
@@ -503,20 +504,20 @@ class WebUIServer:
                 <div class="form-group">
                     <label>存储范围</label>
                     <select name="scope" id="scopeSelect">
-                        <option value="global">🌐 全局知识库</option>
-                        <option value="group">👥 群覆盖库</option>
+                        <option value="global">&#127760; 全局知识库</option>
+                        <option value="group">&#128101; 群覆盖库</option>
                     </select>
                 </div>
                 <div class="form-group" id="groupIdDiv" style="display:none;">
                     <label>群号</label>
                     <input type="text" name="group_id" placeholder="请输入群号">
                 </div>
-                <button type="submit" class="btn btn-primary">📤 上传文档</button>
+                <button type="submit" class="btn btn-primary">&#128228; 上传文档</button>
             </form>
         </div>
         
         <div class="card">
-            <h2>🌐 全局知识库 ({len(global_docs)} 篇文档)</h2>
+            <h2>&#127760; 全局知识库 ({len(global_docs)} 篇文档)</h2>
             <table>
                 <tr><th>ID</th><th>文档名称</th><th>字符数</th><th>创建时间</th><th>操作</th></tr>
                 {''.join(f"""<tr>
@@ -524,16 +525,16 @@ class WebUIServer:
                     <td>{doc['name']}</td>
                     <td>{doc['raw_text_len']:,}</td>
                     <td>{doc['created_at'][:19]}</td>
-                    <td><button class="btn btn-danger" onclick="deleteDoc({doc['id']})">🗑️ 删除</button></td>
+                    <td><button class="btn btn-danger" onclick="deleteDoc({doc['id']})">&#128465;&#65039; 删除</button></td>
                 </tr>""" for doc in global_docs) or '<tr><td colspan="5" class="empty-row">暂无文档</td></tr>'}
             </table>
             <div style="margin-top: 20px;">
-                <button class="btn btn-danger" onclick="clearGlobal()">⚠️ 清空全局库</button>
+                <button class="btn btn-danger" onclick="clearGlobal()">&#9888;&#65039; 清空全局库</button>
             </div>
         </div>
         
         <div class="card">
-            <h2>👥 群覆盖库 ({len(group_docs)} 篇文档)</h2>
+            <h2>&#128101; 群覆盖库 ({len(group_docs)} 篇文档)</h2>
             <table>
                 <tr><th>ID</th><th>文档名称</th><th>群号</th><th>字符数</th><th>创建时间</th><th>操作</th></tr>
                 {''.join(f"""<tr>
@@ -542,7 +543,7 @@ class WebUIServer:
                     <td>{doc['group_id']}</td>
                     <td>{doc['raw_text_len']:,}</td>
                     <td>{doc['created_at'][:19]}</td>
-                    <td><button class="btn btn-danger" onclick="deleteDoc({doc['id']})">🗑️ 删除</button></td>
+                    <td><button class="btn btn-danger" onclick="deleteDoc({doc['id']})">&#128465;&#65039; 删除</button></td>
                 </tr>""" for doc in group_docs) or '<tr><td colspan="6" class="empty-row">暂无文档</td></tr>'}
             </table>
         </div>
@@ -566,13 +567,13 @@ class WebUIServer:
                 }});
                 const data = await resp.json();
                 if (resp.ok) {{
-                    alert('✅ 上传成功！');
+                    alert('&#9989; 上传成功！');
                     location.reload();
                 }} else {{
-                    alert('❌ 上传失败：' + (data.detail || '未知错误'));
+                    alert('&#10060; 上传失败：' + (data.detail || '未知错误'));
                 }}
             }} catch (err) {{
-                alert('❌ 上传失败：' + err.message);
+                alert('&#10060; 上传失败：' + err.message);
             }}
         }};
         
@@ -586,16 +587,16 @@ class WebUIServer:
                     location.reload();
                 }} else {{
                     const data = await resp.json();
-                    alert('❌ 删除失败：' + (data.detail || '未知错误'));
+                    alert('&#10060; 删除失败：' + (data.detail || '未知错误'));
                 }}
             }} catch (err) {{
-                alert('❌ 删除失败：' + err.message);
+                alert('&#10060; 删除失败：' + err.message);
             }}
         }}
         
         async function clearGlobal() {{
-            if (!confirm('⚠️ 确定要清空整个全局库吗？此操作不可恢复！')) return;
-            if (!confirm('⚠️ 再次确认：真的要清空全局库吗？')) return;
+            if (!confirm('&#9888;&#65039; 确定要清空整个全局库吗？此操作不可恢复！')) return;
+            if (!confirm('&#9888;&#65039; 再次确认：真的要清空全局库吗？')) return;
             try {{
                 const resp = await fetch('/docs/clear?scope=global&token=' + token, {{
                     method: 'DELETE'
@@ -604,10 +605,10 @@ class WebUIServer:
                     location.reload();
                 }} else {{
                     const data = await resp.json();
-                    alert('❌ 清空失败：' + (data.detail || '未知错误'));
+                    alert('&#10060; 清空失败：' + (data.detail || '未知错误'));
                 }}
             }} catch (err) {{
-                alert('❌ 清空失败：' + err.message);
+                alert('&#10060; 清空失败：' + err.message);
             }}
         }}
     </script>
@@ -768,15 +769,15 @@ class WebUIServer:
 <body>
     <div class="container">
         <div class="header">
-            <h1>📦 分块浏览</h1>
+            <h1>&#128230; 分块浏览</h1>
         </div>
         
         <nav>
-            <a href="/?token={self.token}">📊 状态总览</a>
-            <a href="/docs-page?token={self.token}">📄 文档管理</a>
-            <a href="/chunks-page?token={self.token}" class="active">📦 分块浏览</a>
-            <a href="/search-page?token={self.token}">🔍 检索调试</a>
-            <a href="/aliases-page?token={self.token}">📝 别名词典</a>
+            <a href="/?token={self.token}">&#128202; 状态总览</a>
+            <a href="/docs-page?token={self.token}">&#128196; 文档管理</a>
+            <a href="/chunks-page?token={self.token}" class="active">&#128230; 分块浏览</a>
+            <a href="/search-page?token={self.token}">&#128269; 检索调试</a>
+            <a href="/aliases-page?token={self.token}">&#128221; 别名词典</a>
         </nav>
         
         <div class="card">
@@ -786,18 +787,18 @@ class WebUIServer:
                 <div class="form-row">
                     <input type="text" name="group_id" placeholder="输入群号筛选" value="{group_id or ''}">
                     <input type="number" name="doc_id" placeholder="输入文档ID筛选" value="{doc_id or ''}">
-                    <button type="submit" class="btn">🔍 筛选</button>
+                    <button type="submit" class="btn">&#128269; 筛选</button>
                 </div>
             </form>
         </div>
         
         <div class="card">
-            <h2>📋 分块列表（显示前100条，共 {len(chunks)} 条）</h2>
+            <h2>&#128203; 分块列表（显示前100条，共 {len(chunks)} 条）</h2>
             {''.join(f"""
             <div class="chunk">
                 <div class="chunk-header">
-                    🔢 分块 #{chunk['id']} | 📄 文档 #{chunk['doc_id']} | 
-                    {'🌐 全局' if chunk['scope'] == 'global' else '👥 群组'} {chunk.get('group_id') or ''}
+                    &#128290; 分块 #{chunk['id']} | &#128196; 文档 #{chunk['doc_id']} | 
+                    {'&#127760; 全局' if chunk['scope'] == 'global' else '&#128101; 群组'} {chunk.get('group_id') or ''}
                 </div>
                 <div class="chunk-tags">
                     {''.join(f'<span class="tag">{tag}</span>' for tag in chunk.get('tags', [])) or '<span style="color:#666;font-size:12px;">无标签</span>'}
@@ -981,15 +982,15 @@ class WebUIServer:
 <body>
     <div class="container">
         <div class="header">
-            <h1>🔍 检索调试</h1>
+            <h1>&#128269; 检索调试</h1>
         </div>
         
         <nav>
-            <a href="/?token={self.token}">📊 状态总览</a>
-            <a href="/docs-page?token={self.token}">📄 文档管理</a>
-            <a href="/chunks-page?token={self.token}">📦 分块浏览</a>
-            <a href="/search-page?token={self.token}" class="active">🔍 检索调试</a>
-            <a href="/aliases-page?token={self.token}">📝 别名词典</a>
+            <a href="/?token={self.token}">&#128202; 状态总览</a>
+            <a href="/docs-page?token={self.token}">&#128196; 文档管理</a>
+            <a href="/chunks-page?token={self.token}">&#128230; 分块浏览</a>
+            <a href="/search-page?token={self.token}" class="active">&#128269; 检索调试</a>
+            <a href="/aliases-page?token={self.token}">&#128221; 别名词典</a>
         </nav>
         
         <div class="card">
@@ -1009,12 +1010,12 @@ class WebUIServer:
                         <input type="number" id="topK" value="6" min="1" max="20">
                     </div>
                 </div>
-                <button type="submit" class="btn">🔍 开始检索</button>
+                <button type="submit" class="btn">&#128269; 开始检索</button>
             </form>
         </div>
         
         <div id="results" class="card">
-            <h2>📊 检索结果</h2>
+            <h2>&#128202; 检索结果</h2>
             <div id="queryInfo" class="query-info"></div>
             <div id="resultsList"></div>
         </div>
@@ -1042,7 +1043,7 @@ class WebUIServer:
                 // Query info
                 const info = data.query_info || {{}};
                 document.getElementById('queryInfo').innerHTML = `
-                    <strong>📋 查询分析</strong><br><br>
+                    <strong>&#128203; 查询分析</strong><br><br>
                     <b>原始查询：</b>${{info.original_query || query}}<br>
                     <b>处理后：</b>${{info.processed_query || query}}<br>
                     <b>提取标签：</b>${{(info.extracted_tags || []).join(', ') || '无'}}<br>
@@ -1059,14 +1060,14 @@ class WebUIServer:
                             <div class="result-header">
                                 <span class="result-info">
                                     #${{i+1}} | 分块 ${{r.id}} | 
-                                    ${{r.scope === 'global' ? '🌐 全局' : '👥 群组'}} ${{r.group_id ? '(' + r.group_id + ')' : ''}}
+                                    ${{r.scope === 'global' ? '&#127760; 全局' : '&#128101; 群组'}} ${{r.group_id ? '(' + r.group_id + ')' : ''}}
                                 </span>
-                                <span class="score">⭐ 得分: ${{r.score.toFixed(3)}}</span>
+                                <span class="score">&#11088; 得分: ${{r.score.toFixed(3)}}</span>
                             </div>
                             <div class="breakdown">
-                                📊 BM25: ${{r.score_breakdown?.bm25?.toFixed(3) || 0}} |
-                                🏷️ 标签加权: ${{r.score_breakdown?.tag_boost?.toFixed(3) || 0}} |
-                                👥 群加权: ${{r.score_breakdown?.group_boost?.toFixed(3) || 0}}
+                                &#128202; BM25: ${{r.score_breakdown?.bm25?.toFixed(3) || 0}} |
+                                &#127991;&#65039; 标签加权: ${{r.score_breakdown?.tag_boost?.toFixed(3) || 0}} |
+                                &#128101; 群加权: ${{r.score_breakdown?.group_boost?.toFixed(3) || 0}}
                             </div>
                             <div>
                                 ${{(r.tags || []).map(t => 
@@ -1078,7 +1079,7 @@ class WebUIServer:
                     `).join('');
                 }}
             }} catch (err) {{
-                alert('❌ 搜索失败：' + err.message);
+                alert('&#10060; 搜索失败：' + err.message);
             }}
         }};
     </script>
@@ -1094,11 +1095,11 @@ class WebUIServer:
             
             # Type display mapping
             type_display = {
-                'identity': '👤 人格',
-                'ego': '🎭 EGO',
-                'status': '⚡ 状态',
-                'mode': '🎮 模式',
-                'other': '📋 其他'
+                'identity': '&#128100; 人格',
+                'ego': '&#127917; EGO',
+                'status': '&#9889; 状态',
+                'mode': '&#127918; 模式',
+                'other': '&#128203; 其他'
             }
             
             html = f"""
@@ -1241,19 +1242,19 @@ class WebUIServer:
 <body>
     <div class="container">
         <div class="header">
-            <h1>📝 别名词典</h1>
+            <h1>&#128221; 别名词典</h1>
         </div>
         
         <nav>
-            <a href="/?token={self.token}">📊 状态总览</a>
-            <a href="/docs-page?token={self.token}">📄 文档管理</a>
-            <a href="/chunks-page?token={self.token}">📦 分块浏览</a>
-            <a href="/search-page?token={self.token}">🔍 检索调试</a>
-            <a href="/aliases-page?token={self.token}" class="active">📝 别名词典</a>
+            <a href="/?token={self.token}">&#128202; 状态总览</a>
+            <a href="/docs-page?token={self.token}">&#128196; 文档管理</a>
+            <a href="/chunks-page?token={self.token}">&#128230; 分块浏览</a>
+            <a href="/search-page?token={self.token}">&#128269; 检索调试</a>
+            <a href="/aliases-page?token={self.token}" class="active">&#128221; 别名词典</a>
         </nav>
         
         <div class="card">
-            <h2>➕ 添加别名</h2>
+            <h2>&#10133; 添加别名</h2>
             <form id="aliasForm">
                 <div class="form-group">
                     <label>别名（玩家常用称呼）</label>
@@ -1266,19 +1267,19 @@ class WebUIServer:
                 <div class="form-group">
                     <label>类型</label>
                     <select id="aliasType">
-                        <option value="identity">👤 人格</option>
-                        <option value="ego">🎭 EGO</option>
-                        <option value="status">⚡ 状态</option>
-                        <option value="mode">🎮 模式</option>
-                        <option value="other" selected>📋 其他</option>
+                        <option value="identity">&#128100; 人格</option>
+                        <option value="ego">&#127917; EGO</option>
+                        <option value="status">&#9889; 状态</option>
+                        <option value="mode">&#127918; 模式</option>
+                        <option value="other" selected>&#128203; 其他</option>
                     </select>
                 </div>
-                <button type="submit" class="btn btn-primary">➕ 添加别名</button>
+                <button type="submit" class="btn btn-primary">&#10133; 添加别名</button>
             </form>
         </div>
         
         <div class="card">
-            <h2>📋 别名列表（共 {len(aliases)} 条）</h2>
+            <h2>&#128203; 别名列表（共 {len(aliases)} 条）</h2>
             <table>
                 <tr><th>别名</th><th>标准名</th><th>类型</th><th>创建时间</th><th>操作</th></tr>
                 {''.join(f"""<tr>
@@ -1286,7 +1287,7 @@ class WebUIServer:
                     <td>{a['canonical']}</td>
                     <td><span class="type-badge type-{a['type']}">{type_display.get(a['type'], a['type'])}</span></td>
                     <td>{a['created_at'][:19]}</td>
-                    <td><button class="btn btn-danger" onclick="deleteAlias('{a['alias']}')">🗑️ 删除</button></td>
+                    <td><button class="btn btn-danger" onclick="deleteAlias('{a['alias']}')">&#128465;&#65039; 删除</button></td>
                 </tr>""" for a in aliases) or '<tr><td colspan="5" class="empty-row">暂无别名数据</td></tr>'}
             </table>
         </div>
@@ -1308,14 +1309,14 @@ class WebUIServer:
                     body: JSON.stringify({{alias, canonical, type}})
                 }});
                 if (resp.ok) {{
-                    alert('✅ 添加成功！');
+                    alert('&#9989; 添加成功！');
                     location.reload();
                 }} else {{
                     const data = await resp.json();
-                    alert('❌ 添加失败：' + (data.detail || '未知错误'));
+                    alert('&#10060; 添加失败：' + (data.detail || '未知错误'));
                 }}
             }} catch (err) {{
-                alert('❌ 添加失败：' + err.message);
+                alert('&#10060; 添加失败：' + err.message);
             }}
         }};
         
@@ -1329,10 +1330,10 @@ class WebUIServer:
                     location.reload();
                 }} else {{
                     const data = await resp.json();
-                    alert('❌ 删除失败：' + (data.detail || '未知错误'));
+                    alert('&#10060; 删除失败：' + (data.detail || '未知错误'));
                 }}
             }} catch (err) {{
-                alert('❌ 删除失败：' + err.message);
+                alert('&#10060; 删除失败：' + err.message);
             }}
         }}
     </script>

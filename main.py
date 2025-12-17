@@ -135,13 +135,17 @@ class LimbusGuidePlugin(Star):
         except ImportError as e:
             logger.warning(f"WebUI dependencies not available: {e}")
             logger.warning("WebUI is disabled. Install fastapi and uvicorn to enable.")
+            logger.info("插件核心功能（问答、导入等）仍可正常使用。")
+            self.webui = None
         except RuntimeError as e:
             # RuntimeError is raised by WebUIServer for startup failures
             logger.error(f"WebUI启动失败: {e}")
             logger.error("请检查端口配置或依赖安装情况。")
+            logger.info("插件核心功能（问答、导入等）仍可正常使用。")
             self.webui = None
         except Exception as e:
             logger.error(f"WebUI启动时发生意外错误: {e}")
+            logger.info("插件核心功能（问答、导入等）仍可正常使用。")
             self.webui = None
     
     # ============ Command Handlers ============

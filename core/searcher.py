@@ -372,11 +372,11 @@ class Searcher:
             if texts:
                 self.chunk_embeddings = await self.embedding_provider.get_embeddings(texts)
                 self._embeddings_computed = True
-        except Exception as e:
-            # If embedding fails, we'll fall back to BM25
+        except Exception:
+            # If embedding fails, reset state to allow fallback to BM25
             self.chunk_embeddings = []
             self._embeddings_computed = False
-            raise e
+            # Don't raise - allow graceful fallback to BM25 search
     
     async def _semantic_search(self, query: str, top_k: int,
                                group_id: Optional[str] = None) -> List[Dict]:

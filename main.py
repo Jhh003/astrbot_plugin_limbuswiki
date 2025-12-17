@@ -116,15 +116,13 @@ class LimbusGuidePlugin(Star):
         # Configure reranking provider
         if self.use_reranking:
             try:
-                # Try to get reranking provider from context
+                # Try to get reranking provider from context's provider_manager
                 rerank_provider = None
-                # Check if context has get_all_rerank_providers method (newer AstrBot versions)
-                if hasattr(self.context, 'provider_manager'):
-                    pm = self.context.provider_manager
-                    if hasattr(pm, 'rerank_provider_insts'):
-                        rerank_providers = pm.rerank_provider_insts
-                        if rerank_providers:
-                            rerank_provider = rerank_providers[0]
+                pm = getattr(self.context, 'provider_manager', None)
+                if pm is not None:
+                    rerank_providers = getattr(pm, 'rerank_provider_insts', None)
+                    if rerank_providers:
+                        rerank_provider = rerank_providers[0]
                 
                 if rerank_provider:
                     self.searcher.set_rerank_provider(rerank_provider)

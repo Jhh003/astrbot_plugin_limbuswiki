@@ -2,6 +2,6 @@
 # The plugin uses only Python standard library for core features
 
 # Optional dependencies for WebUI (install if you want to use WebUI management)
-fastapi>=0.100.0
+fastapi>=0.109.1
 uvicorn>=0.22.0
-python-multipart>=0.0.6
+python-multipart>=0.0.18

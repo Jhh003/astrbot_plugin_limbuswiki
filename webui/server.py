@@ -81,8 +81,8 @@ def _render_chunks(chunks: List[Dict[str, Any]]) -> str:
         html = (
             '<div class="chunk">'
             '<div class="chunk-header">'
-            '&#128290; 分块 #' + str(chunk['id']) + ' | &#128196; 文档 #' + str(chunk['doc_id']) + ' | '
-            + scope_text + ' ' + str(group_id) +
+            '&#128290; 分块 #' + str(chunk['id']) + ' | &#128196; 文档 #' + str(chunk['doc_id']) + ' | ' +
+            scope_text + ' ' + str(group_id) +
             '</div>'
             '<div class="chunk-tags">' + tags_html + '</div>'
             '<div class="chunk-content">' + content_display + '</div>'

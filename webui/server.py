@@ -14,13 +14,16 @@ def _check_port_available(host: str, port: int) -> bool:
     """Check if a port is available for binding"""
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             # For 0.0.0.0, we check localhost since that's what matters for conflicts
             check_host = '127.0.0.1' if host == '0.0.0.0' else host
             sock.bind((check_host, port))
             return True
     except OSError:
         return False
+
+
+# Delay in seconds to wait for server startup before checking status
+_SERVER_STARTUP_CHECK_DELAY = 0.5
 
 
 class WebUIServer:
@@ -874,7 +877,7 @@ class WebUIServer:
         # Wait a moment and check if server started successfully
         # The port check above should catch most issues, but we also
         # wait a bit to see if any startup errors occur
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(_SERVER_STARTUP_CHECK_DELAY)
         
         # Check if the server task has already failed
         if self._server_task.done():
@@ -884,7 +887,7 @@ class WebUIServer:
                 raise RuntimeError(f"WebUI 服务器启动失败: {e}")
         
         # Check if server actually started (uvicorn sets started=True after binding)
-        if not getattr(self.server, 'started', True):
+        if not getattr(self.server, 'started', False):
             self._server_task.cancel()
             try:
                 await self._server_task

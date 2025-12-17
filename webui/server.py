@@ -7,6 +7,7 @@ import os
 import asyncio
 import secrets
 import socket
+import json
 from typing import Optional, Callable, Awaitable, List, Dict, Any
 from datetime import datetime
 
@@ -108,6 +109,69 @@ def _render_alias_rows(aliases: List[Dict[str, Any]], type_display: Dict[str, st
             '<td><span class="type-badge type-' + str(type_val) + '">' + type_text + '</span></td>'
             '<td>' + str(a['created_at'][:19]) + '</td>'
             "<td><button class=\"btn btn-danger\" onclick=\"deleteAlias('" + str(alias_val) + "')\">&#128465;&#65039; 删除</button></td>"
+            '</tr>'
+        )
+        rows.append(row)
+    return ''.join(rows)
+
+
+def _render_nav(token: str, active: str = '') -> str:
+    """Render navigation bar with active page highlighted."""
+    nav_items = [
+        ('/', '&#128202; 状态总览', 'status'),
+        ('/docs-page', '&#128196; 文档管理', 'docs'),
+        ('/chunks-page', '&#128230; 分块浏览', 'chunks'),
+        ('/search-page', '&#128269; 检索调试', 'search'),
+        ('/aliases-page', '&#128221; 别名词典', 'aliases'),
+        ('/model-settings-page', '&#9881;&#65039; 模型设置', 'model'),
+        ('/template-page', '&#128203; 文档模版', 'template'),
+        ('/status-mapping-page', '&#127991;&#65039; 状态映射', 'mapping'),
+    ]
+    
+    links = []
+    for path, label, key in nav_items:
+        active_class = ' class="active"' if key == active else ''
+        links.append(f'<a href="{path}?token={token}"{active_class}>{label}</a>')
+    
+    return '<nav>\n            ' + '\n            '.join(links) + '\n        </nav>'
+
+
+def _render_status_mapping_rows(mappings: List[Dict[str, Any]]) -> str:
+    """Render HTML table rows for status mappings."""
+    if not mappings:
+        return '<tr><td colspan="5" class="empty-row">暂无状态映射数据</td></tr>'
+    rows = []
+    for m in mappings:
+        row = (
+            '<tr>'
+            '<td><strong>' + str(m['status_name']) + '</strong></td>'
+            '<td>' + str(m['subcategory']) + '</td>'
+            '<td>' + str(m['display_name']) + '</td>'
+            '<td>' + str(m.get('description', '') or '') + '</td>'
+            '<td><button class="btn btn-danger" onclick="deleteMapping(' + str(m['id']) + ')">&#128465;&#65039; 删除</button></td>'
+            '</tr>'
+        )
+        rows.append(row)
+    return ''.join(rows)
+
+
+def _render_template_rows(templates: List[Dict[str, Any]]) -> str:
+    """Render HTML table rows for custom templates."""
+    if not templates:
+        return '<tr><td colspan="5" class="empty-row">暂无自定义模板</td></tr>'
+    rows = []
+    for t in templates:
+        default_badge = '<span class="badge badge-default">默认</span>' if t.get('is_default') else ''
+        row = (
+            '<tr>'
+            '<td><strong>' + str(t['name']) + '</strong> ' + default_badge + '</td>'
+            '<td>' + str(t.get('description', '') or '') + '</td>'
+            '<td>' + str(len(t.get('content', ''))) + ' 字符</td>'
+            '<td>' + str(t['updated_at'][:19]) + '</td>'
+            "<td>"
+            "<button class=\"btn btn-primary btn-sm\" onclick=\"editTemplate('" + str(t['name']) + "')\">&#9998; 编辑</button> "
+            "<button class=\"btn btn-danger btn-sm\" onclick=\"deleteTemplate('" + str(t['name']) + "')\">&#128465;&#65039; 删除</button>"
+            "</td>"
             '</tr>'
         )
         rows.append(row)
@@ -374,13 +438,7 @@ class WebUIServer:
             <h1>📚 边狱巴士攻略管理系统</h1>
         </div>
         
-        <nav>
-            <a href="/?token={self.token}" class="active">&#128202; 状态总览</a>
-            <a href="/docs-page?token={self.token}">&#128196; 文档管理</a>
-            <a href="/chunks-page?token={self.token}">&#128230; 分块浏览</a>
-            <a href="/search-page?token={self.token}">&#128269; 检索调试</a>
-            <a href="/aliases-page?token={self.token}">&#128221; 别名词典</a>
-        </nav>
+        {_render_nav(self.token, 'status')}
         
         <div class="warning">
             &#9888;&#65039; <strong>安全提示</strong>：请勿泄露URL中的Token，建议使用Nginx反向代理并启用HTTPS加密。
@@ -589,13 +647,7 @@ class WebUIServer:
             <h1>&#128196; 文档管理</h1>
         </div>
         
-        <nav>
-            <a href="/?token={self.token}">&#128202; 状态总览</a>
-            <a href="/docs-page?token={self.token}" class="active">&#128196; 文档管理</a>
-            <a href="/chunks-page?token={self.token}">&#128230; 分块浏览</a>
-            <a href="/search-page?token={self.token}">&#128269; 检索调试</a>
-            <a href="/aliases-page?token={self.token}">&#128221; 别名词典</a>
-        </nav>
+        {_render_nav(self.token, 'docs')}
         
         <div class="card">
             <h2>&#128228; 上传文档</h2>
@@ -862,13 +914,7 @@ class WebUIServer:
             <h1>&#128230; 分块浏览</h1>
         </div>
         
-        <nav>
-            <a href="/?token={self.token}">&#128202; 状态总览</a>
-            <a href="/docs-page?token={self.token}">&#128196; 文档管理</a>
-            <a href="/chunks-page?token={self.token}" class="active">&#128230; 分块浏览</a>
-            <a href="/search-page?token={self.token}">&#128269; 检索调试</a>
-            <a href="/aliases-page?token={self.token}">&#128221; 别名词典</a>
-        </nav>
+        {_render_nav(self.token, 'chunks')}
         
         <div class="card">
             <h2>🔎 筛选条件</h2>
@@ -1064,13 +1110,7 @@ class WebUIServer:
             <h1>&#128269; 检索调试</h1>
         </div>
         
-        <nav>
-            <a href="/?token={self.token}">&#128202; 状态总览</a>
-            <a href="/docs-page?token={self.token}">&#128196; 文档管理</a>
-            <a href="/chunks-page?token={self.token}">&#128230; 分块浏览</a>
-            <a href="/search-page?token={self.token}" class="active">&#128269; 检索调试</a>
-            <a href="/aliases-page?token={self.token}">&#128221; 别名词典</a>
-        </nav>
+        {_render_nav(self.token, 'search')}
         
         <div class="card">
             <h2>🔎 搜索测试</h2>
@@ -1322,13 +1362,7 @@ class WebUIServer:
             <h1>&#128221; 别名词典</h1>
         </div>
         
-        <nav>
-            <a href="/?token={self.token}">&#128202; 状态总览</a>
-            <a href="/docs-page?token={self.token}">&#128196; 文档管理</a>
-            <a href="/chunks-page?token={self.token}">&#128230; 分块浏览</a>
-            <a href="/search-page?token={self.token}">&#128269; 检索调试</a>
-            <a href="/aliases-page?token={self.token}" class="active">&#128221; 别名词典</a>
-        </nav>
+        {_render_nav(self.token, 'aliases')}
         
         <div class="card">
             <h2>&#10133; 添加别名</h2>
@@ -1395,6 +1429,848 @@ class WebUIServer:
             if (!confirm('确定要删除这个别名吗？')) return;
             try {{
                 const resp = await fetch('/aliases/' + encodeURIComponent(alias) + '?token=' + token, {{
+                    method: 'DELETE'
+                }});
+                if (resp.ok) {{
+                    location.reload();
+                }} else {{
+                    const data = await resp.json();
+                    alert('&#10060; 删除失败：' + (data.detail || '未知错误'));
+                }}
+            }} catch (err) {{
+                alert('&#10060; 删除失败：' + err.message);
+            }}
+        }}
+    </script>
+</body>
+</html>
+"""
+            return HTMLResponse(content=html)
+        
+        @app.get("/model-settings-page", response_class=HTMLResponse)
+        async def model_settings_page(request: Request, _=Depends(verify_token)):
+            """Model settings page with embedding and reranking status"""
+            embedding_status = self.config.get('embedding_status', {
+                'enabled': False, 'implemented': False, 'provider_id': None, 'message': '状态未知'
+            })
+            reranking_status = self.config.get('reranking_status', {
+                'enabled': False, 'implemented': False, 'provider_id': None, 'message': '状态未知'
+            })
+            
+            # Determine status display
+            def get_status_display(status):
+                if status.get('implemented'):
+                    return ('&#9989;', '已实现', 'status-implemented')
+                elif status.get('enabled'):
+                    return ('&#9888;&#65039;', '已启用但未实现', 'status-enabled')
+                else:
+                    return ('&#10060;', '未启用', 'status-disabled')
+            
+            emb_icon, emb_text, emb_class = get_status_display(embedding_status)
+            rer_icon, rer_text, rer_class = get_status_display(reranking_status)
+            
+            html = f"""
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <title>模型设置 - 边狱巴士攻略</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+        body {{ 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #e0e0e0;
+            line-height: 1.6;
+        }}
+        .container {{ max-width: 1200px; margin: 0 auto; padding: 20px; }}
+        .header {{
+            background: linear-gradient(90deg, #e94560 0%, #ff6b6b 100%);
+            padding: 30px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(233, 69, 96, 0.3);
+        }}
+        .header h1 {{ color: #fff; font-size: 28px; font-weight: 700; }}
+        nav {{
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }}
+        nav a {{
+            color: #e0e0e0;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }}
+        nav a:hover, nav a.active {{
+            background: linear-gradient(90deg, #e94560, #ff6b6b);
+            color: #fff;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(233, 69, 96, 0.4);
+        }}
+        .card {{
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px);
+            padding: 25px;
+            margin: 15px 0;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }}
+        .card h2 {{
+            color: #ff6b6b;
+            font-size: 20px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(233, 69, 96, 0.3);
+        }}
+        .model-card {{
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 25px;
+            margin: 15px 0;
+            border-radius: 12px;
+        }}
+        .model-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }}
+        .model-title {{
+            font-size: 18px;
+            font-weight: 600;
+            color: #4ecca3;
+        }}
+        .model-status {{
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-weight: 500;
+            font-size: 14px;
+        }}
+        .status-implemented {{ background: rgba(78, 204, 163, 0.2); color: #4ecca3; }}
+        .status-enabled {{ background: rgba(255, 193, 7, 0.2); color: #ffc107; }}
+        .status-disabled {{ background: rgba(108, 117, 125, 0.2); color: #6c757d; }}
+        .model-info {{
+            margin-top: 15px;
+        }}
+        .info-item {{
+            display: flex;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }}
+        .info-item:last-child {{ border-bottom: none; }}
+        .info-label {{ width: 120px; color: #a0a0a0; }}
+        .info-value {{ color: #e0e0e0; }}
+        .info-help {{
+            margin-top: 15px;
+            padding: 15px;
+            background: rgba(78, 204, 163, 0.1);
+            border-left: 4px solid #4ecca3;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #a0a0a0;
+        }}
+        .info-help strong {{ color: #4ecca3; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>&#9881;&#65039; 模型设置</h1>
+        </div>
+        
+        {_render_nav(self.token, 'model')}
+        
+        <div class="card">
+            <h2>&#128301; 检索增强模型状态</h2>
+            <p style="color: #a0a0a0; margin-bottom: 20px;">
+                检索增强功能可以提高知识库检索的精确度和相关性。这些模型需要在AstrBot主程序中配置后才能使用。
+            </p>
+            
+            <div class="model-card">
+                <div class="model-header">
+                    <span class="model-title">&#128203; 引用嵌入 (Embedding)</span>
+                    <span class="model-status {emb_class}">{emb_icon} {emb_text}</span>
+                </div>
+                <p style="color: #a0a0a0; font-size: 14px;">
+                    嵌入模型将文本转换为向量，实现语义级别的相似度搜索。启用后可以理解同义词和上下文，而不仅仅是关键词匹配。
+                </p>
+                <div class="model-info">
+                    <div class="info-item">
+                        <span class="info-label">启用状态</span>
+                        <span class="info-value">{'是' if embedding_status.get('enabled') else '否'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">实现状态</span>
+                        <span class="info-value">{'是' if embedding_status.get('implemented') else '否'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">提供者ID</span>
+                        <span class="info-value">{embedding_status.get('provider_id') or '未配置'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">状态信息</span>
+                        <span class="info-value">{embedding_status.get('message') or '-'}</span>
+                    </div>
+                </div>
+                <div class="info-help">
+                    <strong>&#128161; 如何启用：</strong><br>
+                    1. 在AstrBot管理面板中配置嵌入模型提供者（如OpenAI Embedding、Cohere等）<br>
+                    2. 在插件配置中设置 <code>use_embedding = true</code><br>
+                    3. 重启插件以使配置生效
+                </div>
+            </div>
+            
+            <div class="model-card">
+                <div class="model-header">
+                    <span class="model-title">&#128300; 重排序 (Reranking)</span>
+                    <span class="model-status {rer_class}">{rer_icon} {rer_text}</span>
+                </div>
+                <p style="color: #a0a0a0; font-size: 14px;">
+                    重排序模型对初步检索结果进行精细排序，提高最终结果的相关性。通常与嵌入模型配合使用效果最佳。
+                </p>
+                <div class="model-info">
+                    <div class="info-item">
+                        <span class="info-label">启用状态</span>
+                        <span class="info-value">{'是' if reranking_status.get('enabled') else '否'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">实现状态</span>
+                        <span class="info-value">{'是' if reranking_status.get('implemented') else '否'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">提供者ID</span>
+                        <span class="info-value">{reranking_status.get('provider_id') or '未配置'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">状态信息</span>
+                        <span class="info-value">{reranking_status.get('message') or '-'}</span>
+                    </div>
+                </div>
+                <div class="info-help">
+                    <strong>&#128161; 如何启用：</strong><br>
+                    1. 在AstrBot管理面板中配置重排序模型提供者（如Cohere Rerank等）<br>
+                    2. 在插件配置中设置 <code>use_reranking = true</code><br>
+                    3. 重启插件以使配置生效
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>&#9881;&#65039; 当前检索配置</h2>
+            <div class="model-info">
+                <div class="info-item">
+                    <span class="info-label">TopK</span>
+                    <span class="info-value">{self.config.get('top_k', 6)}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">分块大小</span>
+                    <span class="info-value">{self.config.get('chunk_size', 800)} 字符</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">分块重叠</span>
+                    <span class="info-value">{self.config.get('overlap', 120)} 字符</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">群覆盖加权</span>
+                    <span class="info-value">{self.config.get('group_boost', 1.2)}x</span>
+                </div>
+            </div>
+            <div class="info-help">
+                <strong>&#128161; 提示：</strong>这些配置需要在AstrBot管理面板的插件配置中修改，修改后重启插件生效。
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+"""
+            return HTMLResponse(content=html)
+        
+        @app.get("/template-page", response_class=HTMLResponse)
+        async def template_page(request: Request, _=Depends(verify_token)):
+            """Document template management page"""
+            templates = await self.db.get_templates()
+            
+            # Import the default template from prompts module
+            from ..core.prompts import DOCUMENT_TEMPLATE
+            
+            html = f"""
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <title>文档模版 - 边狱巴士攻略</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+        body {{ 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #e0e0e0;
+            line-height: 1.6;
+        }}
+        .container {{ max-width: 1200px; margin: 0 auto; padding: 20px; }}
+        .header {{
+            background: linear-gradient(90deg, #e94560 0%, #ff6b6b 100%);
+            padding: 30px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(233, 69, 96, 0.3);
+        }}
+        .header h1 {{ color: #fff; font-size: 28px; font-weight: 700; }}
+        nav {{
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }}
+        nav a {{
+            color: #e0e0e0;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }}
+        nav a:hover, nav a.active {{
+            background: linear-gradient(90deg, #e94560, #ff6b6b);
+            color: #fff;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(233, 69, 96, 0.4);
+        }}
+        .card {{
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px);
+            padding: 25px;
+            margin: 15px 0;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }}
+        .card h2 {{
+            color: #ff6b6b;
+            font-size: 20px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(233, 69, 96, 0.3);
+        }}
+        table {{ width: 100%; border-collapse: collapse; margin-top: 15px; }}
+        th, td {{ padding: 15px; text-align: left; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }}
+        th {{ 
+            background: rgba(233, 69, 96, 0.2); 
+            color: #ff6b6b;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 1px;
+        }}
+        tr:hover {{ background: rgba(255, 255, 255, 0.05); }}
+        .btn {{
+            padding: 8px 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 13px;
+            margin: 2px;
+        }}
+        .btn-sm {{ padding: 6px 12px; font-size: 12px; }}
+        .btn-danger {{
+            background: linear-gradient(90deg, #dc3545, #c82333);
+            color: white;
+        }}
+        .btn-primary {{
+            background: linear-gradient(90deg, #4ecca3, #38b984);
+            color: white;
+        }}
+        .btn-secondary {{
+            background: rgba(255, 255, 255, 0.1);
+            color: #e0e0e0;
+        }}
+        .btn:hover {{ transform: translateY(-2px); }}
+        .form-group {{ margin-bottom: 20px; }}
+        .form-group label {{
+            display: block;
+            margin-bottom: 8px;
+            color: #a0a0a0;
+            font-weight: 500;
+        }}
+        input[type="text"], textarea {{
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #e0e0e0;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }}
+        input:focus, textarea:focus {{ outline: none; border-color: #4ecca3; }}
+        textarea {{
+            min-height: 400px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            line-height: 1.6;
+            resize: vertical;
+        }}
+        .empty-row {{ color: #666; font-style: italic; text-align: center; }}
+        .badge {{
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 500;
+        }}
+        .badge-default {{ background: rgba(78, 204, 163, 0.2); color: #4ecca3; }}
+        .template-content {{
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-radius: 8px;
+            max-height: 500px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #c0c0c0;
+        }}
+        .tab-buttons {{
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }}
+        .tab-btn {{
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 8px;
+            color: #e0e0e0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }}
+        .tab-btn.active {{
+            background: linear-gradient(90deg, #4ecca3, #38b984);
+            color: white;
+        }}
+        .tab-content {{ display: none; }}
+        .tab-content.active {{ display: block; }}
+        #templateEditor {{ display: none; }}
+        #templateEditor.active {{ display: block; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>&#128203; 文档模版（中文版）</h1>
+        </div>
+        
+        {_render_nav(self.token, 'template')}
+        
+        <div class="card">
+            <h2>&#128196; 默认中文模板</h2>
+            <p style="color: #a0a0a0; margin-bottom: 15px;">
+                这是系统内置的默认中文攻略文档模板，可以直接复制使用，或基于此创建自定义模板。
+            </p>
+            <div class="template-content">{DOCUMENT_TEMPLATE}</div>
+            <div style="margin-top: 15px;">
+                <button class="btn btn-primary" onclick="copyDefaultTemplate()">&#128203; 复制模板</button>
+                <button class="btn btn-secondary" onclick="showCreateForm()">&#10133; 基于此创建自定义模板</button>
+            </div>
+        </div>
+        
+        <div class="card" id="templateEditor">
+            <h2 id="editorTitle">&#10133; 创建自定义模板</h2>
+            <form id="templateForm">
+                <div class="form-group">
+                    <label>模板名称</label>
+                    <input type="text" id="templateName" placeholder="例如：燃烧队专用模板" required>
+                </div>
+                <div class="form-group">
+                    <label>模板描述（可选）</label>
+                    <input type="text" id="templateDesc" placeholder="简短描述模板的用途">
+                </div>
+                <div class="form-group">
+                    <label>模板内容</label>
+                    <textarea id="templateContent" placeholder="在此输入模板内容..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">&#128190; 保存模板</button>
+                <button type="button" class="btn btn-secondary" onclick="hideEditor()">取消</button>
+            </form>
+        </div>
+        
+        <div class="card">
+            <h2>&#128203; 自定义模板列表（共 {len(templates)} 个）</h2>
+            <table>
+                <tr><th>名称</th><th>描述</th><th>大小</th><th>更新时间</th><th>操作</th></tr>
+                {_render_template_rows(templates)}
+            </table>
+        </div>
+    </div>
+    
+    <script>
+        const token = '{self.token}';
+        const defaultTemplate = {json.dumps(DOCUMENT_TEMPLATE)};
+        let editingTemplate = null;
+        
+        function copyDefaultTemplate() {{
+            navigator.clipboard.writeText(defaultTemplate).then(() => {{
+                alert('&#9989; 模板已复制到剪贴板！');
+            }}).catch(err => {{
+                alert('&#10060; 复制失败，请手动选择复制');
+            }});
+        }}
+        
+        function showCreateForm() {{
+            document.getElementById('templateEditor').classList.add('active');
+            document.getElementById('editorTitle').textContent = '&#10133; 创建自定义模板';
+            document.getElementById('templateName').value = '';
+            document.getElementById('templateDesc').value = '';
+            document.getElementById('templateContent').value = defaultTemplate;
+            editingTemplate = null;
+        }}
+        
+        function hideEditor() {{
+            document.getElementById('templateEditor').classList.remove('active');
+            editingTemplate = null;
+        }}
+        
+        async function editTemplate(name) {{
+            try {{
+                const resp = await fetch('/templates/' + encodeURIComponent(name) + '?token=' + encodeURIComponent(token));
+                if (!resp.ok) {{
+                    const data = await resp.json();
+                    alert('&#10060; 加载模板失败：' + (data.detail || '未知错误'));
+                    return;
+                }}
+                const data = await resp.json();
+                if (data.template) {{
+                    document.getElementById('templateEditor').classList.add('active');
+                    document.getElementById('editorTitle').textContent = '&#9998; 编辑模板';
+                    document.getElementById('templateName').value = data.template.name;
+                    document.getElementById('templateDesc').value = data.template.description || '';
+                    document.getElementById('templateContent').value = data.template.content;
+                    editingTemplate = name;
+                }} else {{
+                    alert('&#10060; 模板数据为空');
+                }}
+            }} catch (err) {{
+                alert('&#10060; 加载模板失败：' + err.message);
+            }}
+        }}
+        
+        document.getElementById('templateForm').onsubmit = async function(e) {{
+            e.preventDefault();
+            const name = document.getElementById('templateName').value;
+            const description = document.getElementById('templateDesc').value;
+            const content = document.getElementById('templateContent').value;
+            
+            try {{
+                const resp = await fetch('/templates?token=' + encodeURIComponent(token), {{
+                    method: 'POST',
+                    headers: {{'Content-Type': 'application/json'}},
+                    body: JSON.stringify({{name, content, description}})
+                }});
+                if (resp.ok) {{
+                    alert('&#9989; 模板保存成功！');
+                    location.reload();
+                }} else {{
+                    const data = await resp.json();
+                    alert('&#10060; 保存失败：' + (data.detail || '未知错误'));
+                }}
+            }} catch (err) {{
+                alert('&#10060; 保存失败：' + err.message);
+            }}
+        }};
+        
+        async function deleteTemplate(name) {{
+            if (!confirm('确定要删除模板 "' + name + '" 吗？')) return;
+            try {{
+                const resp = await fetch('/templates/' + encodeURIComponent(name) + '?token=' + encodeURIComponent(token), {{
+                    method: 'DELETE'
+                }});
+                if (resp.ok) {{
+                    location.reload();
+                }} else {{
+                    const data = await resp.json();
+                    alert('&#10060; 删除失败：' + (data.detail || '未知错误'));
+                }}
+            }} catch (err) {{
+                alert('&#10060; 删除失败：' + err.message);
+            }}
+        }}
+    </script>
+</body>
+</html>
+"""
+            return HTMLResponse(content=html)
+        
+        @app.get("/status-mapping-page", response_class=HTMLResponse)
+        async def status_mapping_page(request: Request, _=Depends(verify_token)):
+            """Status subcategory mapping management page"""
+            mappings = await self.db.get_status_mappings()
+            
+            # Default status categories
+            status_options = [
+                ('burn', '燃烧 (Burn)'),
+                ('bleed', '流血 (Bleed)'),
+                ('tremor', '震颤 (Tremor)'),
+                ('rupture', '破裂 (Rupture)'),
+                ('sinking', '沉沦 (Sinking)'),
+                ('poise', '蓄力 (Poise)'),
+                ('charge', '充能 (Charge)'),
+                ('other', '其他'),
+            ]
+            
+            status_options_html = ''.join(
+                f'<option value="{val}">{label}</option>' 
+                for val, label in status_options
+            )
+            
+            html = f"""
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <title>状态映射 - 边狱巴士攻略</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+        body {{ 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #e0e0e0;
+            line-height: 1.6;
+        }}
+        .container {{ max-width: 1200px; margin: 0 auto; padding: 20px; }}
+        .header {{
+            background: linear-gradient(90deg, #e94560 0%, #ff6b6b 100%);
+            padding: 30px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(233, 69, 96, 0.3);
+        }}
+        .header h1 {{ color: #fff; font-size: 28px; font-weight: 700; }}
+        nav {{
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }}
+        nav a {{
+            color: #e0e0e0;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }}
+        nav a:hover, nav a.active {{
+            background: linear-gradient(90deg, #e94560, #ff6b6b);
+            color: #fff;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(233, 69, 96, 0.4);
+        }}
+        .card {{
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px);
+            padding: 25px;
+            margin: 15px 0;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }}
+        .card h2 {{
+            color: #ff6b6b;
+            font-size: 20px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(233, 69, 96, 0.3);
+        }}
+        table {{ width: 100%; border-collapse: collapse; margin-top: 15px; }}
+        th, td {{ padding: 15px; text-align: left; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }}
+        th {{ 
+            background: rgba(233, 69, 96, 0.2); 
+            color: #ff6b6b;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 1px;
+        }}
+        tr:hover {{ background: rgba(255, 255, 255, 0.05); }}
+        .btn {{
+            padding: 10px 20px;
+            cursor: pointer;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }}
+        .btn-danger {{
+            background: linear-gradient(90deg, #dc3545, #c82333);
+            color: white;
+        }}
+        .btn-primary {{
+            background: linear-gradient(90deg, #4ecca3, #38b984);
+            color: white;
+        }}
+        .btn:hover {{ transform: translateY(-2px); }}
+        .form-group {{ margin-bottom: 20px; }}
+        .form-group label {{
+            display: block;
+            margin-bottom: 8px;
+            color: #a0a0a0;
+            font-weight: 500;
+        }}
+        input[type="text"], select {{
+            width: 100%;
+            max-width: 400px;
+            padding: 12px 16px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #e0e0e0;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }}
+        input:focus, select:focus {{ outline: none; border-color: #4ecca3; }}
+        select option {{ background: #1a1a2e; color: #e0e0e0; }}
+        .empty-row {{ color: #666; font-style: italic; text-align: center; }}
+        .info-box {{
+            background: rgba(78, 204, 163, 0.1);
+            border-left: 4px solid #4ecca3;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #a0a0a0;
+        }}
+        .info-box strong {{ color: #4ecca3; }}
+        .example-box {{
+            background: rgba(255, 193, 7, 0.1);
+            border-left: 4px solid #ffc107;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-size: 14px;
+            color: #a0a0a0;
+        }}
+        .example-box strong {{ color: #ffc107; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>&#127991;&#65039; 状态/子类映射</h1>
+        </div>
+        
+        {_render_nav(self.token, 'mapping')}
+        
+        <div class="card">
+            <h2>&#9881;&#65039; 功能说明</h2>
+            <div class="info-box">
+                <strong>&#128161; 什么是状态映射？</strong><br>
+                状态映射允许你为游戏中的状态效果定义自定义子类别和显示名称。
+                这在检索时可以帮助更精确地匹配用户的查询意图。
+            </div>
+            <div class="example-box">
+                <strong>&#128221; 使用示例：</strong><br>
+                • 状态：<strong>破裂 (rupture)</strong> → 子类别：<strong>被动破裂</strong> → 显示名称：<strong>非破裂但有破裂效果</strong><br>
+                • 状态：<strong>燃烧 (burn)</strong> → 子类别：<strong>燃烧叠层</strong> → 显示名称：<strong>高叠层燃烧流派</strong><br>
+                • 状态：<strong>震颤 (tremor)</strong> → 子类别：<strong>震颤爆发</strong> → 显示名称：<strong>震颤计数触发伤害</strong>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>&#10133; 添加状态映射</h2>
+            <form id="mappingForm">
+                <div class="form-group">
+                    <label>主状态类别</label>
+                    <select id="statusName" required>
+                        {status_options_html}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>子类别名称</label>
+                    <input type="text" id="subcategory" placeholder="例如：被动破裂、高叠层燃烧" required>
+                </div>
+                <div class="form-group">
+                    <label>显示名称</label>
+                    <input type="text" id="displayName" placeholder="例如：非破裂但有破裂效果" required>
+                </div>
+                <div class="form-group">
+                    <label>描述（可选）</label>
+                    <input type="text" id="mappingDesc" placeholder="简短描述这个子类别的特点">
+                </div>
+                <button type="submit" class="btn btn-primary">&#10133; 添加映射</button>
+            </form>
+        </div>
+        
+        <div class="card">
+            <h2>&#128203; 映射列表（共 {len(mappings)} 条）</h2>
+            <table>
+                <tr><th>主状态</th><th>子类别</th><th>显示名称</th><th>描述</th><th>操作</th></tr>
+                {_render_status_mapping_rows(mappings)}
+            </table>
+        </div>
+    </div>
+    
+    <script>
+        const token = '{self.token}';
+        
+        document.getElementById('mappingForm').onsubmit = async function(e) {{
+            e.preventDefault();
+            const status_name = document.getElementById('statusName').value;
+            const subcategory = document.getElementById('subcategory').value;
+            const display_name = document.getElementById('displayName').value;
+            const description = document.getElementById('mappingDesc').value;
+            
+            try {{
+                const resp = await fetch('/status-mappings?token=' + token, {{
+                    method: 'POST',
+                    headers: {{'Content-Type': 'application/json'}},
+                    body: JSON.stringify({{status_name, subcategory, display_name, description}})
+                }});
+                if (resp.ok) {{
+                    alert('&#9989; 映射添加成功！');
+                    location.reload();
+                }} else {{
+                    const data = await resp.json();
+                    alert('&#10060; 添加失败：' + (data.detail || '未知错误'));
+                }}
+            }} catch (err) {{
+                alert('&#10060; 添加失败：' + err.message);
+            }}
+        }};
+        
+        async function deleteMapping(id) {{
+            if (!confirm('确定要删除这个映射吗？')) return;
+            try {{
+                const resp = await fetch('/status-mappings/' + id + '?token=' + token, {{
                     method: 'DELETE'
                 }});
                 if (resp.ok) {{
@@ -1569,6 +2445,80 @@ class WebUIServer:
             """Get knowledge base statistics"""
             stats = await self.db.get_stats(group_id)
             return stats
+        
+        # ============ Template API ============
+        
+        @app.get("/templates")
+        async def list_templates(_=Depends(verify_token)):
+            """List all custom templates"""
+            templates = await self.db.get_templates()
+            return {"templates": templates}
+        
+        @app.get("/templates/{name}")
+        async def get_template(name: str, _=Depends(verify_token)):
+            """Get a template by name"""
+            template = await self.db.get_template_by_name(name)
+            if not template:
+                raise HTTPException(status_code=404, detail="模板不存在")
+            return {"template": template}
+        
+        class TemplateRequest(BaseModel):
+            name: str
+            content: str
+            description: str = ''
+            is_default: bool = False
+        
+        @app.post("/templates")
+        async def save_template(request: TemplateRequest, _=Depends(verify_token)):
+            """Save or update a custom template"""
+            template_id = await self.db.save_template(
+                name=request.name,
+                content=request.content,
+                description=request.description,
+                is_default=request.is_default
+            )
+            return {"success": True, "id": template_id}
+        
+        @app.delete("/templates/{name}")
+        async def delete_template(name: str, _=Depends(verify_token)):
+            """Delete a custom template"""
+            success = await self.db.delete_template(name)
+            if not success:
+                raise HTTPException(status_code=404, detail="模板不存在")
+            return {"success": True}
+        
+        # ============ Status Mapping API ============
+        
+        @app.get("/status-mappings")
+        async def list_status_mappings(status_name: Optional[str] = None, _=Depends(verify_token)):
+            """List status mappings"""
+            mappings = await self.db.get_status_mappings(status_name)
+            return {"mappings": mappings}
+        
+        class StatusMappingRequest(BaseModel):
+            status_name: str
+            subcategory: str
+            display_name: str
+            description: str = ''
+        
+        @app.post("/status-mappings")
+        async def add_status_mapping(request: StatusMappingRequest, _=Depends(verify_token)):
+            """Add or update a status mapping"""
+            mapping_id = await self.db.add_status_mapping(
+                status_name=request.status_name,
+                subcategory=request.subcategory,
+                display_name=request.display_name,
+                description=request.description
+            )
+            return {"success": True, "id": mapping_id}
+        
+        @app.delete("/status-mappings/{mapping_id}")
+        async def delete_status_mapping(mapping_id: int, _=Depends(verify_token)):
+            """Delete a status mapping"""
+            success = await self.db.delete_status_mapping(mapping_id)
+            if not success:
+                raise HTTPException(status_code=404, detail="映射不存在")
+            return {"success": True}
         
         self.app = app
         

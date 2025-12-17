@@ -35,6 +35,14 @@ from .core.prompts import (
 class LimbusGuidePlugin(Star):
     """Limbus Company game guide query plugin with RAG support"""
     
+    # Default status structure for embedding and reranking
+    _DEFAULT_FEATURE_STATUS = {
+        'enabled': False,
+        'implemented': False,
+        'provider_id': None,
+        'message': ''
+    }
+    
     def __init__(self, context: Context, config: AstrBotConfig):
         super().__init__(context)
         self.context = context
@@ -70,6 +78,10 @@ class LimbusGuidePlugin(Star):
         # Import session management: {unified_msg_origin: session_data}
         self.import_sessions: Dict[str, dict] = {}
         
+    def _get_default_status(self) -> dict:
+        """Return a copy of the default feature status dictionary"""
+        return dict(self._DEFAULT_FEATURE_STATUS)
+    
     async def initialize(self):
         """Initialize plugin components"""
         logger.info("Initializing Limbus Guide Plugin...")
@@ -101,17 +113,42 @@ class LimbusGuidePlugin(Star):
     
     async def _configure_search_providers(self):
         """Configure embedding and reranking providers from AstrBot"""
+        # Track implementation status for logging and WebUI display
+        self.embedding_status = self._get_default_status()
+        self.embedding_status['enabled'] = self.use_embedding
+        
+        self.reranking_status = self._get_default_status()
+        self.reranking_status['enabled'] = self.use_reranking
+        
+        # Log implementation status header
+        logger.info("=" * 50)
+        logger.info("【检索增强功能状态检查】")
+        
         # Configure embedding provider
         if self.use_embedding:
             try:
                 embedding_providers = self.context.get_all_embedding_providers()
                 if embedding_providers:
                     self.searcher.set_embedding_provider(embedding_providers[0])
-                    logger.info(f"Embedding provider configured: {embedding_providers[0].meta().id}")
+                    provider_id = embedding_providers[0].meta().id
+                    self.embedding_status['implemented'] = True
+                    self.embedding_status['provider_id'] = provider_id
+                    self.embedding_status['message'] = f"已配置: {provider_id}"
+                    logger.info(f"✅ 引用嵌入(Embedding)功能: 已实现")
+                    logger.info(f"   - 提供者: {provider_id}")
                 else:
-                    logger.warning("Embedding enabled but no embedding provider available in AstrBot")
+                    self.embedding_status['message'] = "未找到可用的嵌入模型提供者"
+                    logger.warning("⚠️ 引用嵌入(Embedding)功能: 未实现")
+                    logger.warning("   - 原因: 已启用但AstrBot中没有可用的嵌入模型")
+                    logger.warning("   - 提示: 请在AstrBot中配置嵌入模型(如OpenAI Embedding)")
             except Exception as e:
-                logger.warning(f"Failed to configure embedding provider: {e}")
+                self.embedding_status['message'] = f"配置失败: {e}"
+                logger.error(f"❌ 引用嵌入(Embedding)功能: 配置失败")
+                logger.error(f"   - 错误: {e}")
+        else:
+            self.embedding_status['message'] = "功能未启用"
+            logger.info("ℹ️ 引用嵌入(Embedding)功能: 未启用")
+            logger.info("   - 提示: 在插件配置中设置 use_embedding=true 启用")
         
         # Configure reranking provider
         if self.use_reranking:
@@ -126,11 +163,27 @@ class LimbusGuidePlugin(Star):
                 
                 if rerank_provider:
                     self.searcher.set_rerank_provider(rerank_provider)
-                    logger.info(f"Reranking provider configured: {rerank_provider.meta().id}")
+                    provider_id = rerank_provider.meta().id
+                    self.reranking_status['implemented'] = True
+                    self.reranking_status['provider_id'] = provider_id
+                    self.reranking_status['message'] = f"已配置: {provider_id}"
+                    logger.info(f"✅ 重排序(Reranking)功能: 已实现")
+                    logger.info(f"   - 提供者: {provider_id}")
                 else:
-                    logger.warning("Reranking enabled but no reranking provider available in AstrBot")
+                    self.reranking_status['message'] = "未找到可用的重排序模型提供者"
+                    logger.warning("⚠️ 重排序(Reranking)功能: 未实现")
+                    logger.warning("   - 原因: 已启用但AstrBot中没有可用的重排序模型")
+                    logger.warning("   - 提示: 请在AstrBot中配置重排序模型(如Cohere Rerank)")
             except Exception as e:
-                logger.warning(f"Failed to configure reranking provider: {e}")
+                self.reranking_status['message'] = f"配置失败: {e}"
+                logger.error(f"❌ 重排序(Reranking)功能: 配置失败")
+                logger.error(f"   - 错误: {e}")
+        else:
+            self.reranking_status['message'] = "功能未启用"
+            logger.info("ℹ️ 重排序(Reranking)功能: 未启用")
+            logger.info("   - 提示: 在插件配置中设置 use_reranking=true 启用")
+        
+        logger.info("=" * 50)
     
     async def _rebuild_search_index(self, group_id: Optional[str] = None):
         """Rebuild search index from database"""
@@ -152,6 +205,9 @@ class LimbusGuidePlugin(Star):
                 'chunk_size': self.chunk_size,
                 'overlap': self.overlap,
                 'group_boost': self.group_boost,
+                # Embedding and reranking status for WebUI display
+                'embedding_status': getattr(self, 'embedding_status', self._get_default_status()),
+                'reranking_status': getattr(self, 'reranking_status', self._get_default_status()),
             }
             
             self.webui = WebUIServer(

@@ -10,6 +10,9 @@ Limbus Company（边狱巴士）游戏攻略查询插件，支持 RAG 检索增�
 - 🏷️ **自动标签**：根据 Limbus Company 领域关键词自动打标签
 - 🌐 **WebUI 管理**：可视化管理知识库、调试检索
 - 🔒 **多群隔离**：全局库 + 群覆盖库双层知识库模型
+- 🧠 **检索增强**：支持嵌入模型(Embedding)和重排序模型(Reranking)
+- 📝 **自定义模板**：支持创建和管理自定义文档模板
+- 🏷️ **状态映射**：支持自定义状态子类别映射
 
 ## 📦 安装
 
@@ -50,6 +53,41 @@ Limbus Company（边狱巴士）游戏攻略查询插件，支持 RAG 检索增�
 在问题中包含以下关键词会自动使用详细模式：
 `详细`、`展开`、`机制`、`原理`、`配装`、`怎么配`、`长一点`
 
+## 🧠 检索增强功能
+
+插件支持使用嵌入模型和重排序模型来提升检索精度：
+
+### 引用嵌入 (Embedding)
+
+嵌入模型将文本转换为向量，实现语义级别的相似度搜索。启用后可以理解同义词和上下文，而不仅仅是关键词匹配。
+
+**启用方法**：
+1. 在 AstrBot 管理面板中配置嵌入模型提供者（如 OpenAI Embedding、Cohere 等）
+2. 在插件配置中设置 `use_embedding = true`
+3. 重启插件
+
+### 重排序 (Reranking)
+
+重排序模型对初步检索结果进行精细排序，提高最终结果的相关性。通常与嵌入模型配合使用效果最佳。
+
+**启用方法**：
+1. 在 AstrBot 管理面板中配置重排序模型提供者（如 Cohere Rerank 等）
+2. 在插件配置中设置 `use_reranking = true`
+3. 重启插件
+
+### 状态日志
+
+插件启动时会在日志中显示检索增强功能的实现状态：
+```
+==================================================
+【检索增强功能状态检查】
+✅ 引用嵌入(Embedding)功能: 已实现
+   - 提供者: openai-embedding
+✅ 重排序(Reranking)功能: 已实现
+   - 提供者: cohere-rerank
+==================================================
+```
+
 ## 🌐 WebUI 管理
 
 ### 访问方式
@@ -59,11 +97,30 @@ Limbus Company（边狱巴士）游戏攻略查询插件，支持 RAG 检索增�
 
 ### WebUI 功能
 
-- **状态页**：查看运行状态、知识库统计
+- **状态总览**：查看运行状态、知识库统计
 - **文档管理**：上传/删除文档，支持全局库和群覆盖库
-- **Chunk 浏览**：查看分块内容和标签
+- **分块浏览**：查看分块内容和标签
 - **检索调试**：测试搜索效果，查看得分详情
 - **别名词典**：管理关键词别名映射
+- **模型设置**：查看嵌入模型和重排序模型的启用状态和实现状态
+- **文档模版**：查看默认中文模板，创建和管理自定义模板
+- **状态映射**：自定义状态效果的子类别映射
+
+### 文档模版管理
+
+在 WebUI 的「文档模版」页面，您可以：
+- 查看并复制默认的中文攻略文档模板
+- 基于默认模板创建自定义模板
+- 编辑和删除已保存的自定义模板
+
+### 状态映射管理
+
+状态映射允许您为游戏中的状态效果定义自定义子类别和显示名称，便于更精确地匹配用户查询。
+
+**使用示例**：
+- 状态：**破裂 (rupture)** → 子类别：**被动破裂** → 显示名称：**非破裂但有破裂效果**
+- 状态：**燃烧 (burn)** → 子类别：**燃烧叠层** → 显示名称：**高叠层燃烧流派**
+- 状态：**震颤 (tremor)** → 子类别：**震颤爆发** → 显示名称：**震颤计数触发伤害**
 
 ### 安全建议
 
@@ -93,7 +150,7 @@ server {
 
 ## 📝 攻略文档格式
 
-使用 `/guide template` 获取推荐的文档模板。
+使用 `/guide template` 获取推荐的文档模板，或在 WebUI 的「文档模版」页面查看和自定义模板。
 
 为了获得最佳检索效果，建议在文档中：
 
@@ -115,6 +172,8 @@ server {
 | `chunk_size` | 分块大小（字符） | 800 |
 | `overlap` | 分块重叠（字符） | 120 |
 | `group_boost` | 群覆盖库加权系数 | 1.2 |
+| `use_embedding` | 是否使用嵌入模型进行语义检索 | false |
+| `use_reranking` | 是否使用重排序模型优化结果 | false |
 | `webui_enabled` | 是否启用 WebUI | true |
 | `webui_host` | WebUI 监听地址 | 0.0.0.0 |
 | `webui_port` | WebUI 端口 | 8765 |
@@ -152,6 +211,24 @@ curl -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"query": "燃烧队配置", "top_k": 6}' \
   http://localhost:8765/search
+
+# 获取模板列表
+curl -H "Authorization: Bearer <token>" http://localhost:8765/templates
+
+# 保存自定义模板
+curl -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "我的模板", "content": "模板内容...", "description": "模板描述"}' \
+  http://localhost:8765/templates
+
+# 获取状态映射列表
+curl -H "Authorization: Bearer <token>" http://localhost:8765/status-mappings
+
+# 添加状态映射
+curl -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"status_name": "rupture", "subcategory": "被动破裂", "display_name": "非破裂但有破裂效果"}' \
+  http://localhost:8765/status-mappings
 ```
 
 ## 🤝 贡献

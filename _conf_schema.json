@@ -1,0 +1,50 @@
+{
+  "top_k": {
+    "description": "检索返回的最大chunk数量",
+    "type": "int",
+    "hint": "设置每次查询返回的相关内容块数量，默认6",
+    "default": 6
+  },
+  "chunk_size": {
+    "description": "文档分块大小（字符数）",
+    "type": "int",
+    "hint": "设置每个chunk的最大字符数，默认800",
+    "default": 800
+  },
+  "overlap": {
+    "description": "分块重叠大小（字符数）",
+    "type": "int",
+    "hint": "相邻chunk之间的重叠字符数，默认120",
+    "default": 120
+  },
+  "group_boost": {
+    "description": "群覆盖库加权系数",
+    "type": "float",
+    "hint": "群覆盖库内容相对于全局库的权重加成，默认1.2",
+    "default": 1.2
+  },
+  "webui_enabled": {
+    "description": "是否启用WebUI管理界面",
+    "type": "bool",
+    "hint": "启用后可通过浏览器管理知识库",
+    "default": true
+  },
+  "webui_host": {
+    "description": "WebUI监听地址",
+    "type": "string",
+    "hint": "默认0.0.0.0允许远程访问，设为127.0.0.1仅允许本机访问",
+    "default": "0.0.0.0"
+  },
+  "webui_port": {
+    "description": "WebUI端口",
+    "type": "int",
+    "hint": "WebUI服务监听的端口号",
+    "default": 8765
+  },
+  "webui_token": {
+    "description": "WebUI访问Token",
+    "type": "string",
+    "hint": "留空则自动生成。用于WebUI身份验证，请妥善保管",
+    "default": ""
+  }
+}

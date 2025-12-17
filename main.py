@@ -50,6 +50,10 @@ class LimbusGuidePlugin(Star):
         self.overlap = config.get("overlap", 120)
         self.group_boost = config.get("group_boost", 1.2)
         
+        # Embedding and reranking configuration
+        self.use_embedding = config.get("use_embedding", False)
+        self.use_reranking = config.get("use_reranking", False)
+        
         # WebUI configuration
         self.webui_enabled = config.get("webui_enabled", True)
         self.webui_host = config.get("webui_host", "0.0.0.0")
@@ -79,6 +83,9 @@ class LimbusGuidePlugin(Star):
         self.tagger = Tagger()
         self.searcher = Searcher()
         
+        # Configure embedding and reranking providers if enabled
+        await self._configure_search_providers()
+        
         # Load existing data into searcher
         await self._rebuild_search_index()
         
@@ -91,6 +98,41 @@ class LimbusGuidePlugin(Star):
             await self._start_webui()
         
         logger.info("Limbus Guide Plugin initialized successfully")
+    
+    async def _configure_search_providers(self):
+        """Configure embedding and reranking providers from AstrBot"""
+        # Configure embedding provider
+        if self.use_embedding:
+            try:
+                embedding_providers = self.context.get_all_embedding_providers()
+                if embedding_providers:
+                    self.searcher.set_embedding_provider(embedding_providers[0])
+                    logger.info(f"Embedding provider configured: {embedding_providers[0].meta().id}")
+                else:
+                    logger.warning("Embedding enabled but no embedding provider available in AstrBot")
+            except Exception as e:
+                logger.warning(f"Failed to configure embedding provider: {e}")
+        
+        # Configure reranking provider
+        if self.use_reranking:
+            try:
+                # Try to get reranking provider from context
+                rerank_provider = None
+                # Check if context has get_all_rerank_providers method (newer AstrBot versions)
+                if hasattr(self.context, 'provider_manager'):
+                    pm = self.context.provider_manager
+                    if hasattr(pm, 'rerank_provider_insts'):
+                        rerank_providers = pm.rerank_provider_insts
+                        if rerank_providers:
+                            rerank_provider = rerank_providers[0]
+                
+                if rerank_provider:
+                    self.searcher.set_rerank_provider(rerank_provider)
+                    logger.info(f"Reranking provider configured: {rerank_provider.meta().id}")
+                else:
+                    logger.warning("Reranking enabled but no reranking provider available in AstrBot")
+            except Exception as e:
+                logger.warning(f"Failed to configure reranking provider: {e}")
     
     async def _rebuild_search_index(self, group_id: Optional[str] = None):
         """Rebuild search index from database"""
@@ -199,16 +241,26 @@ class LimbusGuidePlugin(Star):
         else:
             last_import = "从未导入"
         
+        # Search enhancement info
+        search_enhancement = ""
+        if self.use_embedding or self.use_reranking:
+            enhancements = []
+            if self.use_embedding:
+                enhancements.append("嵌入模型")
+            if self.use_reranking:
+                enhancements.append("重排序模型")
+            search_enhancement = f"\n【检索增强】\n已启用：{', '.join(enhancements)}"
+        
         # WebUI info (only for admins)
         webui_info = ""
         if is_admin and self.webui_enabled and self.webui:
             webui_info = f"""
-**WebUI管理**：
-- 地址：{self.webui.get_url()}
-- Token：{self.webui_token}
-- ⚠️ 请勿泄露Token！"""
+【WebUI管理】
+地址：{self.webui.get_url()}
+Token：{self.webui_token}
+⚠️ 请勿泄露Token！"""
         elif is_admin:
-            webui_info = "**WebUI**：未启用"
+            webui_info = "\n【WebUI】未启用"
         
         status_text = STATUS_TEMPLATE.format(
             group_id=group_id,
@@ -221,6 +273,7 @@ class LimbusGuidePlugin(Star):
             top_k=self.top_k,
             chunk_size=self.chunk_size,
             overlap=self.overlap,
+            search_enhancement=search_enhancement,
             webui_info=webui_info
         )
         
@@ -426,8 +479,11 @@ class LimbusGuidePlugin(Star):
         # Detect mode from query
         mode = PromptBuilder.detect_mode_from_query(query, default_mode)
         
-        # Search for relevant chunks
-        results = self.searcher.search(query, top_k=self.top_k, group_id=group_id)
+        # Search for relevant chunks using async search (supports embedding & reranking if configured)
+        if self.use_embedding or self.use_reranking:
+            results = await self.searcher.search_async(query, top_k=self.top_k, group_id=group_id)
+        else:
+            results = self.searcher.search(query, top_k=self.top_k, group_id=group_id)
         
         if not results:
             # No relevant content found, skip processing to allow other AI features
@@ -474,18 +530,24 @@ class LimbusGuidePlugin(Star):
         """
         group_id = event.get_group_id() or "private"
         
-        # Search for relevant chunks
-        results = self.searcher.search(question, top_k=self.top_k, group_id=group_id)
+        # Search for relevant chunks using async search if embedding/reranking is enabled
+        if self.use_embedding or self.use_reranking:
+            results = await self.searcher.search_async(question, top_k=self.top_k, group_id=group_id)
+        else:
+            results = self.searcher.search(question, top_k=self.top_k, group_id=group_id)
         
         if not results:
             return "知识库中没有找到相关信息，请建议用户补充相关攻略文档。"
         
-        # Build context for LLM tool response
+        # Build context for LLM tool response (more natural format)
         context_parts = []
         for i, chunk in enumerate(results[:3]):  # Top 3 for tool
-            context_parts.append(f"[参考{i+1}] {chunk['content'][:300]}...")
+            content = chunk['content'][:300]
+            if len(chunk['content']) > 300:
+                content += "..."
+            context_parts.append(f"参考资料{i+1}：{content}")
         
-        return f"找到以下相关信息：\n\n" + "\n\n".join(context_parts)
+        return "找到以下相关信息：\n\n" + "\n\n".join(context_parts)
     
     async def terminate(self):
         """Cleanup when plugin is unloaded"""

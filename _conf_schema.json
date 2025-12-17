@@ -23,6 +23,18 @@
     "hint": "群覆盖库内容相对于全局库的权重加成，默认1.2",
     "default": 1.2
   },
+  "use_embedding": {
+    "description": "是否使用嵌入模型进行语义检索",
+    "type": "bool",
+    "hint": "启用后将使用AstrBot配置的嵌入模型进行语义搜索，提高检索精度。需要先在AstrBot中配置嵌入模型。",
+    "default": false
+  },
+  "use_reranking": {
+    "description": "是否使用重排序模型优化结果",
+    "type": "bool",
+    "hint": "启用后将使用AstrBot配置的重排序模型对检索结果进行重排序，进一步提高相关性。需要先在AstrBot中配置重排序模型。",
+    "default": false
+  },
   "webui_enabled": {
     "description": "是否启用WebUI管理界面",
     "type": "bool",
